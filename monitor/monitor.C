@@ -16,12 +16,17 @@
 //
 
 /*----------------------------------------------------------------------------*/
+#include <vector>
+//#ifdef __MAKECINT__
+//#pragma link C++ class vector<float>+;
+//#eindif
+
 
 TChain *run = new TChain("T");
 TCanvas *c1 = new TCanvas("c1","c1",700,400);
 
 // ranges for plotting
-const int   nbin = 300;
+const int   nbin = 600;
 const float emin = 0.; // in keV
 const float emax = 3000.; // in keV
 const float adc_max_volt = 2.;
@@ -48,6 +53,7 @@ Double_t get_delta_t(){
 /*----------------------------------------------------------------------------*/
 void plot_spectrum(int ichannel){
     // plot the 1D energy spectrum for channel = ichannel
+    Double_t de = (emax-emin)/nbin;
     TH1F *_e_all  = new TH1F("e_all","e_all",nbin,emin,emax);
     TH1F *_e_good  = new TH1F("e_good","e_good",nbin,emin,emax);
     TH1F *_e_err01 = new TH1F("e_err01","e_err01",nbin,emin,emax);
@@ -68,8 +74,6 @@ void plot_spectrum(int ichannel){
     Double_t n_entries = _e_all->GetEntries();
     Double_t rate  = n_entries / dt;
     Double_t drate = sqrt(n_entries)/dt;
-    
-    dt = 1;
     
     _e_good->Scale(1./dt);
     _e_err01->Scale(1./dt);
@@ -99,6 +103,27 @@ void plot_spectrum(int ichannel){
     _e_err02->SetLineColor(6);
     _e_err02->Draw("same");
     leg->Draw();
+    
+    // indicate the full absorption peaks for our sources
+    TVector *epeak = new TVector(10);
+    //if        (ichannel == 2 || ichannel == 3){
+    //    epeak.push_back(511);
+    //} else if (ichannel == 4 || ichannel == 5){
+    //    epeak.push_back(1173);
+    //} else if (ichannel == 6 || ichannel == 7){
+    //    epeak.push_back(667);
+    //}
+    
+    Double_t yp = e_good->GetMaximum()*1.02;
+    //for(int ip = 0; ip<(int)peaks.size(); ip++){
+    Double_t xp = 667.;
+    cout <<xp<<" "<<yp<<endl;
+    TMarker *m = new TMarker(xp,yp,32);
+    m->SetMarkerSize(0.8);
+    m->Draw();
+    //}
+    
+    
 }
 /*----------------------------------------------------------------------------*/
 void plot_2d(int ichannel){
@@ -171,8 +196,8 @@ void monitor(string runname, string plot_type, int ichannel, bool log_scale, boo
     run->Add(cmd);
     
     // open the first file: will be used to retrieve settings
-    sprintf(cmd,"%s_000000.root",runname.c_str());
-    TFile *_file = new TFile(cmd,"READONLY");
+//    sprintf(cmd,"%s_000000.root",runname.c_str());
+//    TFile *_file = new TFile(cmd,"READONLY");
     
     // no statistics box
     gStyle->SetOptStat(0);

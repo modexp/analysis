@@ -21,7 +21,7 @@ TCanvas *c1 = new TCanvas("c1","c1",700,400);
 // ranges for plotting
 const int      n_channel = 8;
 const Double_t v_range = 1.5;
-const Double_t delta_t_plot = 60.;
+const Double_t delta_t_plot = 10.;
 
 char cmd[256],cuts[256];
 
@@ -218,8 +218,8 @@ void hvmon(string runname, string plot_type, int ichannel, bool save_plot)
     run->Add(cmd);
     
     // open the first file: will be used to retrieve settings
-    sprintf(cmd,"%s_000000.root",runname.c_str());
-    TFile *_file = new TFile(cmd,"READONLY");
+//    sprintf(cmd,"%s_000000.root",runname.c_str());
+//    TFile *_file = new TFile(cmd,"READONLY");
     
     // no statistics box in plots
     gStyle->SetOptStat(0);
