@@ -20,7 +20,7 @@
 class ecal {
 public :
     string fileName;
-   TTree          *fChain;   //!pointer to the analyzed TTree or TChain
+   TChain          *fChain;   //!pointer to the analyzed TTree or TChain
    Int_t           fCurrent; //!current Tree number in a TChain
 
    // Declaration of leaf types
@@ -43,13 +43,12 @@ public :
    TBranch        *b_baseline;   //!
    TBranch        *b_baselineRMS;   //!
 
-   ecal(TTree *tree=0);
    ecal(string fname);
    virtual ~ecal();
    virtual Int_t    Cut(Long64_t entry);
    virtual Int_t    GetEntry(Long64_t entry);
    virtual Long64_t LoadTree(Long64_t entry);
-   virtual void     Init(TTree *tree);
+   virtual void     Init(TChain *tree);
    virtual void     Loop();
    virtual Bool_t   Notify();
    virtual void     Show(Long64_t entry = -1);
@@ -58,27 +57,18 @@ public :
 #endif
 
 #ifdef ecal_cxx
-ecal::ecal(TTree *tree) : fChain(0) 
-{
-// if parameter tree is not specified (or zero), connect the file
-// used to generate this class and read the Tree.
-   if (tree == 0) {
-      TFile *f = (TFile*)gROOT->GetListOfFiles()->FindObject("../../rootoutput/mx_n_20150313_1943_000000.bin.root");
-      if (!f || !f->IsOpen()) {
-         f = new TFile("../../rootoutput/mx_n_20150313_1943_000000.bin.root");
-      }
-      f->GetObject("T",tree);
 
-   }
-   Init(tree);
-}
 
 ecal::ecal(string fname) : fChain(0) 
 {
-    fileName = fname;
-    TTree *tree;
-    TFile *f = new TFile(fileName.c_str());
-    f->GetObject("T",tree);
+    char cmd[256];
+    TChain *tree = new TChain("T");
+    sprintf(cmd,"%s*.root",fname.c_str());
+    tree->Add(cmd);
+    //fileName = fname;
+    //TTree *tree;
+    //TFile *f = new TFile(fileName.c_str());
+    //f->GetObject("T",tree);
 
     Init(tree);
 }
@@ -108,32 +98,33 @@ Long64_t ecal::LoadTree(Long64_t entry)
    return centry;
 }
 
-void ecal::Init(TTree *tree)
+void ecal::Init(TChain *tree)
 {
-   // The Init() function is called when the selector needs to initialize
-   // a new tree or chain. Typically here the branch addresses and branch
-   // pointers of the tree will be set.
-   // It is normally not necessary to make changes to the generated
-   // code, but the routine can be extended by the user if needed.
-   // Init() will be called many times when running on PROOF
-   // (once per file to be processed).
-
-   // Set branch addresses and branch pointers
-   if (!tree) return;
-   fChain = tree;
-   fCurrent = -1;
-   fChain->SetMakeClass(1);
-
-   fChain->SetBranchAddress("channel", &channel, &b_channel);
-   fChain->SetBranchAddress("integral", &integral, &b_integral);
-   fChain->SetBranchAddress("height", &height, &b_height);
-   fChain->SetBranchAddress("time", &time, &b_time);
-   fChain->SetBranchAddress("istestpulse", &istestpulse, &b_istestpulse);
-   fChain->SetBranchAddress("error", &error, &b_error);
-   fChain->SetBranchAddress("baseline", &baseline, &b_baseline);
-   fChain->SetBranchAddress("rms", &rms, &b_baselineRMS);
-   Notify();
+    // The Init() function is called when the selector needs to initialize
+    // a new tree or chain. Typically here the branch addresses and branch
+    // pointers of the tree will be set.
+    // It is normally not necessary to make changes to the generated
+    // code, but the routine can be extended by the user if needed.
+    // Init() will be called many times when running on PROOF
+    // (once per file to be processed).
+    
+    // Set branch addresses and branch pointers
+    if (!tree) return;
+    fChain = tree;
+    fCurrent = -1;
+    fChain->SetMakeClass(1);
+    
+    fChain->SetBranchAddress("channel", &channel, &b_channel);
+    fChain->SetBranchAddress("integral", &integral, &b_integral);
+    fChain->SetBranchAddress("height", &height, &b_height);
+    fChain->SetBranchAddress("time", &time, &b_time);
+    fChain->SetBranchAddress("istestpulse", &istestpulse, &b_istestpulse);
+    fChain->SetBranchAddress("error", &error, &b_error);
+    fChain->SetBranchAddress("baseline", &baseline, &b_baseline);
+    fChain->SetBranchAddress("rms", &rms, &b_baselineRMS);
+    Notify();
 }
+
 
 Bool_t ecal::Notify()
 {
