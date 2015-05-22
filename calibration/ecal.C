@@ -33,7 +33,7 @@ void ecal::Loop()
     Long64_t nentries = fChain->GetEntriesFast();
     
     // private code below
-    TFile *_f = new TFile(fileName.c_str(),"RECREATE");
+    TFile *_f = new TFile(calFile.c_str(),"RECREATE");
 
     std::vector<TH1F*> _integral;
     std::vector<TH1F*> _energy;

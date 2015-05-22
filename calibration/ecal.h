@@ -20,7 +20,7 @@
 
 class ecal {
 public :
-   string          fileName;
+   string          calFile;
    TChain          *fChain;   //!pointer to the analyzed TTree or TChain
    Int_t           fCurrent; //!current Tree number in a TChain
 
@@ -44,7 +44,7 @@ public :
    TBranch        *b_baseline;   //!
    TBranch        *b_baselineRMS;   //!
 
-   ecal(string fname);
+   ecal(string fname,string cname);
    virtual ~ecal();
    virtual Int_t    Cut(Long64_t entry);
    virtual Int_t    GetEntry(Long64_t entry);
@@ -60,21 +60,20 @@ public :
 #ifdef ecal_cxx
 
 
-ecal::ecal(string fname) : fChain(0) 
+ecal::ecal(string fname,string cname) : fChain(0) 
 {
     char cmd[256];
     TChain *tree = new TChain("T");
     sprintf(cmd,"%s*.root",fname.c_str());
     tree->Add(cmd);
     
-    fileName = fname;
+    calFile = cname;
+//    size_t pos = fileName.find_last_of("/")+1;
+//    fileName = fileName.substr(pos);
+//    pos = fileName.find_last_of("_");
+//    fileName = "CAL_"+fileName.substr(0,pos)+".root";
 
-    size_t pos = fileName.find_last_of("/")+1;
-    fileName = fileName.substr(pos);
-    pos = fileName.find_last_of("_");
-    fileName = "CAL_"+fileName.substr(0,pos)+".root";
-
-    cout<< fileName<<endl;
+//    cout<< fileName<<endl;
     
     Init(tree);
 }

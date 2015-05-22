@@ -1,0 +1,5 @@
+{
+  gROOT->LoadMacro("/user/z37/Modulation/analysis/calibration/ecal.C++");
+  ecal e("DATA_DIR","CAL_FILE");
+  e.Loop();
+}
