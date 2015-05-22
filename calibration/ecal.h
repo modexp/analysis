@@ -7,7 +7,8 @@
 
 #ifndef ecal_h
 #define ecal_h
-
+#include <iostream>
+#include <stdio.h>
 #include <TROOT.h>
 #include <TChain.h>
 #include <TFile.h>
@@ -19,7 +20,7 @@
 
 class ecal {
 public :
-    string fileName;
+   string          fileName;
    TChain          *fChain;   //!pointer to the analyzed TTree or TChain
    Int_t           fCurrent; //!current Tree number in a TChain
 
@@ -65,11 +66,16 @@ ecal::ecal(string fname) : fChain(0)
     TChain *tree = new TChain("T");
     sprintf(cmd,"%s*.root",fname.c_str());
     tree->Add(cmd);
-    //fileName = fname;
-    //TTree *tree;
-    //TFile *f = new TFile(fileName.c_str());
-    //f->GetObject("T",tree);
+    
+    fileName = fname;
 
+    size_t pos = fileName.find_last_of("/")+1;
+    fileName = fileName.substr(pos);
+    pos = fileName.find_last_of("_");
+    fileName = "CAL_"+fileName.substr(0,pos)+".root";
+
+    cout<< fileName<<endl;
+    
     Init(tree);
 }
 
