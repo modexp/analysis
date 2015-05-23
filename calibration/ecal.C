@@ -23,7 +23,7 @@
 // (2) Set range_low and range_high to find the range in which the peak with cal_energy should be
 const double range_low[NUMBER_OF_CHANNELS] ={0.,0.,0.05e-6,0.05e-6,0.,0.,0.,0.};
 const double range_high[NUMBER_OF_CHANNELS]={1e-6,1e-6,1e-6,1e-6,1e-6,1e-6,1e-6,1e-6};
-const double cal_energy[NUMBER_OF_CHANNELS]={1000.,1000.,511.,511.,1173.,1173.,667.,667.};
+const double cal_energy[NUMBER_OF_CHANNELS]={1000.,1000.,511.,511.,1173.,1173.,661.7,661.7};
 
 void ecal::Loop()
 {
