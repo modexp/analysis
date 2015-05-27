@@ -8,7 +8,7 @@
 #include <TParameter.h>
 #include <iostream>
 //#include <vector>
-#include <numeric>
+//#include <numeric>
 #include <stdio.h>
 #include <TMath.h>
 #include <TF1.h>
@@ -30,6 +30,8 @@ Double_t fitf(Double_t *v, Double_t *par)
     if (par[2] != 0) arg = (v[0] - par[1])/par[2];
     
     Double_t fitval = par[0]*TMath::Exp(-0.5*arg*arg);
+    fitval += par[3] + par[4]*v[0] + par[5]*v[0]*v[0];
+
     return fitval;
 }
 
@@ -81,21 +83,37 @@ void gain::get_interval_data(){
     //
     cout<<"gain::get_interval_data:: time_since_start ="<<time_since_start<<endl;
     
+    int huh;
+    TCanvas *c1 = new TCanvas("c1","c1",600,400);
+    Double_t bin_width = (emax-emin)/nbin;
     for(int ich=0; ich<NUMBER_OF_CHANNELS; ich++){
         int maxbin = _pk_tmp[ich]->GetMaximumBin();
         Double_t energy = _pk_tmp[ich]->GetBinCenter(maxbin);
-        TF1 *func = new TF1("fit",fitf,energy-50,energy+50,3);
+      
+
+        _pk_tmp[ich]->GetXaxis()->SetRangeUser(energy-200,energy+200);
+        _pk_tmp[ich]->Draw();
+
+        TF1 *func = new TF1("fit",fitf,energy-200,energy+200,5);
         func->SetParameters(10000,energy,25);
         func->SetParNames("C","mean","sigma");
-        _pk_tmp[ich]->Fit("fit");
+        _pk_tmp[ich]->Fit("fit","","",energy-100.,energy+75.);
         
-        Double_t peak   = func->GetParameter(0);
-        energy          = func->GetParameter(1);
-        Double_t sigma  = func->GetParameter(2);
+        c1->Update();
+        cin>>huh;
         
-        var_select.at(ich)->push_back(peak);
+        Double_t peak        = func->GetParameter(0);
+        energy               = func->GetParameter(1);
+        Double_t sigma       = func->GetParameter(2);
+        Double_t resolution  = 0;
+        if(energy>0) resolution = 2.355*sigma/energy ;
+        
+        Double_t rate = TMath::Sqrt(2*TMath::Pi())*sigma*peak / TIME_INTERVAL / bin_width;
+        cout <<"get_interval_data:: ich ="<<ich<<" E = "<<energy<<" keV  rate = "<<rate<<" Hz  resolution  = "<<resolution<<" % "<<endl;
+        
+        var_select.at(ich)->push_back(rate);
         var_select.at(ich+  NUMBER_OF_CHANNELS)->push_back(energy);
-        var_select.at(ich+2*NUMBER_OF_CHANNELS)->push_back(sigma);
+        var_select.at(ich+2*NUMBER_OF_CHANNELS)->push_back(resolution);
         
         _pk_tmp[ich]->Reset();
         delete func;
@@ -135,7 +153,23 @@ void gain::write_histograms(){
     vector<TGraph*> _gr;
     char gname[256];
     for(int ich=0; ich<3*NUMBER_OF_CHANNELS+1; ich++){
-        cout << " graph for ich = "<<ich<<endl;
+        string type="";
+        if(ich<3*NUMBER_OF_CHANNELS){
+            if( ich/NUMBER_OF_CHANNELS == 0) {
+                type = "rate";
+                sprintf(gname,"%s_ch%d",type.c_str(),ich%NUMBER_OF_CHANNELS);
+            } else if (ich/NUMBER_OF_CHANNELS == 1) {
+                type = "energy";
+                sprintf(gname,"%s_ch%d",type.c_str(),ich%NUMBER_OF_CHANNELS);
+            } else if (ich/NUMBER_OF_CHANNELS == 2) {
+                type = "resolution";
+                sprintf(gname,"%s_ch%d",type.c_str(),ich%NUMBER_OF_CHANNELS);
+            }
+        } else if (ich == INDEX_TEMPERATURE){
+            type = "temperature";
+            sprintf(gname,"%s",type.c_str());
+        }
+        cout << " graph for ich = "<<ich<< " variable = "<<type<<endl;
         Int_t n = (Int_t)interval_time.size();
         //double vmean = accumulate(var_select.at(ich)->begin(),var_select.at(ich)->end(),0.0)/var_select.at(ich)->size();
         double v0 = var_select.at(ich)->at(0);
@@ -144,20 +178,14 @@ void gain::write_histograms(){
         for (int i=0 ; i<n ; i++)
         {
             x[i]=interval_time.at(i);
-            y[i]=(var_select.at(ich)->at(i) - v0)/v0;
+            if(type == "temperature" || type == "energy" || type == "rate"){
+               y[i]=(var_select.at(ich)->at(i) - v0)/v0;
+            } else {
+               y[i]= var_select.at(ich)->at(i);
+            }
+
         }
         _gr.push_back(new TGraph(n,x,y));
-        if(ich<3*NUMBER_OF_CHANNELS){
-            if( ich/NUMBER_OF_CHANNELS == 0) {
-                sprintf(gname,"rate_ch%d",ich%NUMBER_OF_CHANNELS);
-            } else if (ich/NUMBER_OF_CHANNELS == 1) {
-                sprintf(gname,"peak_ch%d",ich%NUMBER_OF_CHANNELS);
-            } else if (ich/NUMBER_OF_CHANNELS == 2) {
-                sprintf(gname,"resolution_ch%d",ich%NUMBER_OF_CHANNELS);
-            }
-        } else {
-            sprintf(gname,"temperature");
-        }
         _gr[ich]->SetName(gname);
         _gr[ich]->Write();
     }
@@ -202,7 +230,8 @@ void gain::Loop()
         //
         fill_histograms();
         //
-        // if we exceed the maximum time interval, get all the data recorded during this time. then reset time for a new interval....
+        // if we exceed the maximum time interval, get all the data recorded 
+        // during this time. then reset time for a new interval....
         //
         if(time_since_start - t0 > TIME_INTERVAL) get_interval_data();
         

@@ -96,7 +96,7 @@ gain::gain(string fname, string cname) : fChain(0)
     // extract the run number from the input directory
     
     // replace double // by / ..... just in case
-    fname.replace(fname.find("//"),2,"/");
+//    fname.replace(fname.find("//"),2,"/");
     size_t pos = fname.find_last_of("/");
     bool ok = true;
     size_t index = pos-1;
