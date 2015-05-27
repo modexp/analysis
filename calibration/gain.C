@@ -178,11 +178,7 @@ void gain::write_histograms(){
         for (int i=0 ; i<n ; i++)
         {
             x[i]=interval_time.at(i);
-            if(type == "temperature" || type == "energy" || type == "rate"){
-               y[i]=(var_select.at(ich)->at(i) - v0)/v0;
-            } else {
-               y[i]= var_select.at(ich)->at(i);
-            }
+            y[i]= var_select.at(ich)->at(i);
 
         }
         _gr.push_back(new TGraph(n,x,y));
