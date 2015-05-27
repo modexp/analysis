@@ -11,8 +11,12 @@
 #include <TROOT.h>
 #include <TChain.h>
 #include <TFile.h>
+#include <TH1F.h>
 #include <string>
+#include <vector>
 #include <iostream>
+
+#define TIME_INTERVAL 900
 
 // Header file for the classes stored in the TTree if any.
 
@@ -21,6 +25,10 @@
 class gain {
     public :
     string fileName, gain_file, run;
+    vector<float> interval_time;
+    vector< vector<float> *> var_select;
+    
+    
     TChain          *fChain;   //!pointer to the analyzed TTree or TChain
     Int_t           fCurrent; //!current Tree number in a TChain
     
@@ -55,6 +63,20 @@ class gain {
     virtual void     Loop();
     virtual Bool_t   Notify();
     virtual void     Show(Long64_t entry = -1);
+    
+    
+    void book_histograms();
+    void fill_histograms();
+    void get_interval_data();
+    void write_histograms();
+
+    // histograms
+    TFile *_f;
+    vector<TH1F*> _e_all,_e_good,_e_err1,_e_err2,_pk_tmp;
+    TH1F *_T;
+    
+    // time information
+    Double_t t0,tstart,time_since_start;
 };
 
 #endif
