@@ -1,5 +1,5 @@
-#define gain_cxx
-#include "gain.h"
+#define analyzer_cxx
+#include "analyzer.h"
 #include <TH2.h>
 #include <TStyle.h>
 #include <TCanvas.h>
@@ -35,8 +35,8 @@ Double_t fitf(Double_t *v, Double_t *par)
     return fitval;
 }
 
-void gain::book_histograms(){
-    _f = new TFile(gain_file.c_str(),"RECREATE");
+void analyzer::book_histograms(){
+    _f = new TFile(analyzer_file.c_str(),"RECREATE");
     
     char hname[128];
     // book histograms
@@ -61,7 +61,7 @@ void gain::book_histograms(){
     
 }
 
-void gain::fill_histograms(){
+void analyzer::fill_histograms(){
     // fill all the histograms
     
     channel = channel % 100 ;
@@ -76,12 +76,12 @@ void gain::fill_histograms(){
     else if ((error&0x02)!=0) _e_err2[channel]->Fill(integral);
 }
 
-void gain::get_interval_data(){
+void analyzer::get_interval_data(){
     //
     // analyze the data from a time interval.
     // length of interval set by TIME_INTERVAL which can be set in header file
     //
-    cout<<"gain::get_interval_data:: time_since_start ="<<time_since_start<<endl;
+    cout<<"analyzer::get_interval_data:: time_since_start ="<<time_since_start<<endl;
     
     int huh;
 //    TCanvas *c1 = new TCanvas("c1","c1",600,400);
@@ -126,7 +126,7 @@ void gain::get_interval_data(){
     _T->Reset();
 }
 
-void gain::write_histograms(){
+void analyzer::write_histograms(){
     //
     // write a few parameters to file
     //
@@ -191,7 +191,7 @@ void gain::write_histograms(){
     _holder->Write();
 }
 
-void gain::Loop()
+void analyzer::Loop()
 {
     // energy calibration for modulation detectors
     if (fChain == 0) return;
