@@ -5,19 +5,41 @@
 
 #define NUMBER_OF_CHANNELS 8
 
-void stability(string var, string type){
+string sources[] = {"none","none","^{44}Ti (511keV)","^{44}Ti (511keV)","^{60}Co (1173keV)","^{60}Co (1173keV)","^{137}Cs (662keV)","^{137}Cs (662keV)"};
+
+TCanvas *c1 = new TCanvas("c1","c1",800,400);
+
+string get_figname(string fname){
+  string figname = "";
+  figname = fname;
+  size_t pos = figname.find_last_of("/")+1;
+  figname = figname.substr(pos);
+  pos = figname.find_last_of(".");
+  figname = figname.substr(0,pos);
+  pos = figname.find_first_of("_")+1;
+  figname = figname.substr(pos);
+
+  return figname;
+}
+
+
+void stability(string rootfile, string var, string type, bool save_plot){
     //
-    // var   - "energy", "rate","resolution"
-    // type  - "abs", "rel"
+    // Plot rate, energy, resolution as a function of time.
     //
-    TCanvas *c1 = new TCanvas("c1","c1",800,400);
+    // Input: rootfile  - input root filename
+    //        var       - "energy", "rate","resolution"
+    //        type      - "abs", "rel"
+    //        save_plot - save plot to .pdf file (or other format)
     //
+    // A.P. Colijn
     //
-    //
+    TFile *_f = new TFile(rootfile.c_str(),"READONLY");
+   
     gStyle->SetOptStat(0);
     cout << "stability:: plotting routine"<<endl;
     
-    char hname[128];
+    char hname[128],cmd[128];
     // draw master 1D histogram to hold the graphs
     hld->Draw();
     hld->GetXaxis()->SetTitle("time(sec)");
@@ -43,7 +65,11 @@ void stability(string var, string type){
     Double_t ymax = 0;
     // for now forget about the 2 empty detectors...
     int ioff = 0;
-    if (yname == "energy") ioff = 1;
+    if (var == "energy") ioff = 1;
+    // make a legend
+    TLegend *leg = new TLegend(0.65,0.63,0.95,0.89);
+    leg->SetFillStyle(0);
+
     for(int ich = 2; ich<NUMBER_OF_CHANNELS+ioff; ich++){
         if(ich<NUMBER_OF_CHANNELS){
             sprintf(hname,"%s_ch%d",var.c_str(),ich);
@@ -78,9 +104,26 @@ void stability(string var, string type){
         gr->SetMarkerColor(ich+1);
         gr->SetMarkerStyle(istyle);
         gr->Draw("PL");
+
+        // add legend entry
+        if( ich<NUMBER_OF_CHANNELS){
+          sprintf(cmd, "ch%d - %s ", ich, sources[ich].c_str());
+          leg->AddEntry(gr,cmd,"l");
+        }
     }
-    hld->GetYaxis()->SetRangeUser(0,ymax*1.2);
+    if(type == "abs") hld->GetYaxis()->SetRangeUser(0,ymax*1.6);
     
+    // draw the legend
+    leg->SetBorderSize(0);
+    leg->Draw();
+
     c1->Update();
+
+    if(save_plot){
+       string figname = "plots/"+get_figname(rootfile)+"_"+var+"_"+type+".pdf";
+       c1->Print(figname.c_str());
+       string figname = "plots/"+get_figname(rootfile)+"_"+var+"_"+type+".png";
+       c1->Print(figname.c_str());
+    } 
     return;
 }

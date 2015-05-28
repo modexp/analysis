@@ -73,6 +73,7 @@ void ecal::Loop()
         // find the bin with maximum value in the range
         int ibin = _integral[ich]->GetMaximumBin();
         double val = _integral[ich]->GetBinCenter(ibin);
+        // should replace with Gauss fit ..... to get the  calibration
         ccal[ich] = cal_energy[ich] / val;
         sprintf(tmp,"cal_ch%02d",ich);
         _calibration.push_back(new TParameter<double>(tmp,ccal[ich]));

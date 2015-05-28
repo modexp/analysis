@@ -84,23 +84,22 @@ void gain::get_interval_data(){
     cout<<"gain::get_interval_data:: time_since_start ="<<time_since_start<<endl;
     
     int huh;
-    TCanvas *c1 = new TCanvas("c1","c1",600,400);
+//    TCanvas *c1 = new TCanvas("c1","c1",600,400);
     Double_t bin_width = (emax-emin)/nbin;
     for(int ich=0; ich<NUMBER_OF_CHANNELS; ich++){
         int maxbin = _pk_tmp[ich]->GetMaximumBin();
         Double_t energy = _pk_tmp[ich]->GetBinCenter(maxbin);
-      
 
         _pk_tmp[ich]->GetXaxis()->SetRangeUser(energy-200,energy+200);
-        _pk_tmp[ich]->Draw();
+//        _pk_tmp[ich]->Draw();
 
         TF1 *func = new TF1("fit",fitf,energy-200,energy+200,5);
         func->SetParameters(10000,energy,25);
         func->SetParNames("C","mean","sigma");
         _pk_tmp[ich]->Fit("fit","","",energy-100.,energy+75.);
         
-        c1->Update();
-        cin>>huh;
+//        c1->Update();
+//        cin>>huh;
         
         Double_t peak        = func->GetParameter(0);
         energy               = func->GetParameter(1);
@@ -124,15 +123,19 @@ void gain::get_interval_data(){
     var_select.at(INDEX_TEMPERATURE)->push_back(tmean);
     interval_time.push_back((t0+time_since_start)/2.); // almost right....
     
-    // reset the time for the start of the next interval
-    t0 = time_since_start;
-    
     _T->Reset();
 }
 
 void gain::write_histograms(){
     //
-    // write historgams to the output root file
+    // write a few parameters to file
+    //
+    TParameter<Double_t> * tstartPar = new TParameter<Double_t>("t0",tstart);
+    tstartPar->Write();
+    TParameter<Double_t> * tendPar = new TParameter<Double_t>("runtime",time_since_start);
+    tendPar->Write();
+    //
+    // write histograms to the output root file
     //
     for(int ich = 0; ich<NUMBER_OF_CHANNELS; ich++){
         _e_all[ich]->Write();
@@ -229,7 +232,11 @@ void gain::Loop()
         // if we exceed the maximum time interval, get all the data recorded 
         // during this time. then reset time for a new interval....
         //
-        if(time_since_start - t0 > TIME_INTERVAL) get_interval_data();
+        if(time_since_start - t0 > TIME_INTERVAL) {
+           get_interval_data();
+           // reset the time for the start of the next interval
+           t0 = time_since_start;
+        }
         
         if(jentry%500000 == 0) cout<<"Processed "<<jentry<<" events"<<endl;
     }
