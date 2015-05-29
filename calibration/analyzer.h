@@ -25,8 +25,6 @@
 class analyzer {
     public :
     string fileName, analyzer_file, run;
-    vector<float> interval_time;
-    vector< vector<float> *> var_select;
     
     
     TChain          *fChain;   //!pointer to the analyzed TTree or TChain
@@ -74,6 +72,13 @@ class analyzer {
     TFile *_f;
     vector<TH1F*> _e_all,_e_good,_e_err1,_e_err2,_pk_tmp;
     TH1F *_T;
+    
+    TTree *tree;
+    
+    Double_t    _t_t0, _t_time;
+    Int_t       _t_chanNum;
+    Int_t       _t_peakNum;
+    Double_t    _t_rate, _t_energy, _t_res, _t_temp;
     
     // time information
     Double_t t0,tstart,time_since_start;
