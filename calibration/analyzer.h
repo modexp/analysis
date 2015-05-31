@@ -75,10 +75,14 @@ class analyzer {
     
     TTree *tree;
     
-    Double_t    _t_t0, _t_time;
+    Double_t    _t_t0;
+    Double_t    _t_time;
     Int_t       _t_chanNum;
     Int_t       _t_peakNum;
-    Double_t    _t_rate, _t_energy, _t_res, _t_temp;
+    Double_t    _t_rate; 
+    Double_t    _t_energy; 
+    Double_t    _t_res;
+    Double_t    _t_temp;
     
     // time information
     Double_t t0,tstart,time_since_start;

@@ -91,8 +91,6 @@ void analyzer::book_histograms(){
     tree->Branch("e", &_t_energy, "e/D");
     tree->Branch("res", &_t_res, "res/D");
     tree->Branch("temp", &_t_temp, "temp/D");
-    
-    
 }
 
 void analyzer::fill_histograms(){
@@ -126,8 +124,7 @@ void analyzer::get_interval_data(){
     
     cout<<"analyzer::get_interval_data:: time_since_start ="<<time_since_start<<endl;
     
-//    int huh;
-//    TCanvas *c1 = new TCanvas("c1","c1",600,400);
+    TCanvas *c1 = new TCanvas("c1","c1",600,400);
     Double_t bin_width = (emax-emin)/nbin;
     for(int ich=0; ich<NUMBER_OF_CHANNELS; ich++){
         //
@@ -153,8 +150,8 @@ void analyzer::get_interval_data(){
                 maxbin  = _pk_tmp[ich]->GetMaximumBin();
                 e_start = _pk_tmp[ich]->GetBinCenter(maxbin);
                 
-//                _pk_tmp[ich]->GetXaxis()->SetRangeUser(0.,3000.);
-//                _pk_tmp[ich]->Draw();
+                _pk_tmp[ich]->GetXaxis()->SetRangeUser(0.,3000.);
+                _pk_tmp[ich]->Draw();
                 
                 //
                 // fit a Gauss + background to a photopeak
@@ -169,11 +166,8 @@ void analyzer::get_interval_data(){
                     if(ipeak == 0) e_high = e_start + 75;
                     if(ipeak == 1) e_low  = e_start - 75;
                 }
-                _pk_tmp[ich]->Fit("fit","","",e_low,e_high);
-                
-//                c1->Update();
-//                cin>>huh;
-                
+                _pk_tmp[ich]->Fit("fit","Q","",e_low,e_high);
+               
                 Double_t peak        = func->GetParameter(0);
                 _t_energy            = func->GetParameter(1);
                 if(ipeak ==0) e0 = _t_energy;
@@ -182,12 +176,13 @@ void analyzer::get_interval_data(){
                 if(_t_energy>0) _t_res = 2.355*sigma/_t_energy ;
                 
                 _t_rate = TMath::Sqrt(2*TMath::Pi())*sigma*peak / TIME_INTERVAL / bin_width;
-                cout <<"get_interval_data:: ich ="<<ich<<" E = "<<_t_energy<<" keV  rate = "<<_t_rate<<" Hz  resolution  = "<<_t_res<<" % "<<endl;
+                cout <<"get_interval_data:: ich ="<<ich<<" ipeak = "<<ipeak<<" E = "<<_t_energy<<" keV  rate = "<<_t_rate<<" Hz  resolution  = "<<_t_res<<" % "<<endl;
                 
-                _t_chanNum = ich;
-                _t_peakNum = ipeak;
+                _t_chanNum = (Int_t)ich;
+                _t_peakNum = (Int_t)ipeak;
                 
                 tree->Fill();
+                c1->Update();
                 
                 delete func;
             }
