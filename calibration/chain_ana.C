@@ -1,0 +1,208 @@
+#ifndef __headers__
+#define __headers__
+#include <vector>
+#endif
+
+#define NUMBER_OF_CHANNELS 8
+#define MAX_PEAKS 5
+
+TChain *run = new TChain("ana");
+
+float v0[NUMBER_OF_CHANNELS][MAX_PEAKS];
+
+string source_name[] = {
+    "none",
+    "none",
+    "^{44}Ti",
+    "^{44}Ti",
+    "^{60}Co",
+    "^{60}Co",
+    "^{137}Cs",
+    "^{137}Cs"
+};
+
+float source_energy[NUMBER_OF_CHANNELS][MAX_PEAKS] =
+//
+// the energy peaks you wish to select should be in this list
+// NOTE: the first peak should be the highest in the spectrum (sub-optimal, but handy for finding)
+//
+{
+    {-1,-1,-1,-1,-1}, // channel0: no source
+    {-1,-1,-1,-1,-1}, // channel1: no source
+    {511.,1157.020,511.+1157.020,-1,-1}, // channel2: 44Ti
+    {511.,1157.020,511.+1157.020,-1,-1}, // channel3: 44Ti
+    {1173.2,1332.5,1173.2+1332.5,-1,-1}, // channel4: 60Co
+    {1173.2,1332.5,1173.2+1332.5,-1,-1}, // channel5: 60Co
+    {662.,-1,-1,-1,-1}, // channel6: 137Cs
+    {662.,-1,-1,-1,-1}  // channel7: 137Cs
+};
+
+TCanvas *c1 = new TCanvas("c1","c1",800,400);
+
+string get_figname(string fname){
+    // extract figure name from the filename
+    string figname = "";
+    figname = fname;
+    size_t pos = figname.find_last_of("/")+1;
+    figname = figname.substr(pos);
+    pos = figname.find_last_of(".");
+    figname = figname.substr(0,pos);
+    pos = figname.find_first_of("_")+1;
+    figname = figname.substr(pos);
+    
+    return figname;
+}
+
+
+void getInitialValues(string var1){
+    // get the values of the parameter you want to plot at t=0.
+    // needed when plotting relative values
+    
+    char cmd[128];
+
+    Double_t v_tmp;
+    Int_t    ich_tmp,ipk_tmp;
+    sprintf(cmd,"%s",var1.c_str());
+    
+    cout << "cmd "<<cmd<<endl;
+    run->SetBranchAddress(cmd,&v_tmp);
+    run->SetBranchAddress("channel",&ich_tmp);
+    run->SetBranchAddress("peak",&ipk_tmp);
+    for(int i=MAX_PEAKS*NUMBER_OF_CHANNELS; i>=0; i--){
+        run->GetEntry(i);
+        v0[ich_tmp][ipk_tmp] = v_tmp;
+    }
+    return;
+}
+
+void chain_ana(string rootfile, string var, string type, bool save_plot){
+    //
+    // Plot rate, energy, resolution as a function of time.
+    //
+    // Input: rootfile  - input root filename
+    //        var       - "energy", "rate","resolution"
+    //        type      - "abs", "rel"
+    //        save_plot - save plot to .pdf file (or other format)
+    //
+    // A.P. Colijn
+    //
+    char hname[128],cmd[128],cut[128];
+    //TFile *_f = new TFile(rootfile.c_str(),"READONLY");
+    
+
+    // add files to the chain .....
+    sprintf(cmd,"%s*.root",rootfile.c_str());
+    run->Add(cmd);
+    
+    
+    // get time range + list of filenames
+    Double_t tmin = 9e99, tmax = 0;
+    
+    // loop over the files....
+    TObjArray *fileElements=run->GetListOfFiles();
+    TIter next(fileElements);
+    TChainElement *chEl=0;
+    while (( chEl=(TChainElement*)next() )) {
+        TFile f(chEl->GetTitle());
+        cout << f.GetName() <<endl;
+        
+        if(t0->GetVal()<tmin) tmin = t0->GetVal();
+        if(t0->GetVal()+runtime->GetVal()>tmax) tmax = t0->GetVal()+runtime->GetVal();
+        
+        f.Close();
+    }
+    
+    gStyle->SetOptStat(0);
+    cout << "stability:: plotting routine"<<endl;
+    
+    TH1F *_hld = new TH1F("hld","hld",1,tmin,tmax);
+    sprintf(hname,"%s",var.c_str());
+    
+    _hld->SetTitle(hname);
+    _hld->GetXaxis()->SetTitle("time (sec)");
+    _hld->GetYaxis()->SetRangeUser(0.,300);
+    _hld->Draw();
+    if(type == "rel") {
+        _hld->GetYaxis()->SetRangeUser(-0.05,0.05);
+        _hld->GetYaxis()->SetTitle("(v - v(t=0)) / v(t=0)");
+    } else {
+        string yname;
+        if ( var == "rate" ){
+            yname = "Rate (Hz)";
+        } else if ( var == "e" ){
+            yname = "Energy (keV)";
+        } else if ( var == "res") {
+            yname = "FWHM/E";
+        }
+        _hld->GetYaxis()->SetTitle(yname.c_str());
+    }
+    
+    int istyle;
+    
+    Double_t ymax = 0;
+    
+    // make a legend
+    TLegend *leg = new TLegend(0.65,0.63,0.95,0.89);
+    leg->SetFillStyle(0);
+    
+    //getInitialValues(var);
+    Double_t v_tmp;
+    Int_t    ich_tmp,ipk_tmp;
+    sprintf(cmd,"%s",var.c_str());
+    
+    cout << "cmd "<<cmd<<endl;
+    run->SetBranchAddress(cmd,&v_tmp);
+    run->SetBranchAddress("channel",&ich_tmp);
+    run->SetBranchAddress("peak",&ipk_tmp);
+    for(int i=MAX_PEAKS*NUMBER_OF_CHANNELS; i>=0; i--){
+        run->GetEntry(i);
+        v0[ich_tmp][ipk_tmp] = v_tmp;
+    }
+    
+    //
+    // loop over all the channels
+    //
+    for(int ich = 2; ich<NUMBER_OF_CHANNELS; ich++){
+        
+        if(type == "abs"){
+            sprintf(cmd,"%s:t0+time",var.c_str());
+            cout << " cmd ="<<cmd<<endl;
+        } else {
+            sprintf(cmd,"(%s-%f)/%f:t0+time",var.c_str(),v0[ich][0],v0[ich][0]);
+        }
+        //sprintf(cut,"(channel==%d)",ich);
+        
+        sprintf(cut,"(channel==%d)",ich);
+        run->SetMarkerStyle(1);
+        run->SetMarkerColor(ich+1);
+        run->SetLineColor(ich+1);
+        run->Draw(cmd,cut,"same");
+        
+        // add legend entry
+        sprintf(cmd, "ch%d - %s ", ich, source_name[ich].c_str());
+        TLine *l1 = new TLine();
+        l1->SetLineColor(ich+1);
+        leg->AddEntry(l1,cmd,"l");
+    }
+    
+    if(type == "abs"){
+        sprintf(cmd,"%s",var.c_str());
+        Double_t ymax = run->GetMaximum(cmd);
+        cout << ymax <<endl;
+        _hld->GetYaxis()->SetRangeUser(0.,1.6*ymax);
+    }
+    
+    // draw the legend
+    leg->SetBorderSize(0);
+    leg->Draw();
+    
+    c1->Update();
+    
+    if(save_plot){
+        string figname = "plots/"+get_figname(rootfile)+"_"+var+"_"+type+".pdf";
+        c1->Print(figname.c_str());
+        string figname = "plots/"+get_figname(rootfile)+"_"+var+"_"+type+".png";
+        c1->Print(figname.c_str());
+    } 
+    return;
+}
