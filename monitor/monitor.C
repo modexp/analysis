@@ -21,8 +21,8 @@
 //#pragma link C++ class vector<float>+;
 //#eindif
 
-
-TChain *run = new TChain("T");
+TFile *_file;
+//TChain *run = new TChain("T");
 TCanvas *c1 = new TCanvas("c1","c1",700,400);
 
 // ranges for plotting
@@ -33,43 +33,28 @@ const float adc_max_volt = 2.;
 const float base_max_val = 2000;
 char cmd[256];
 
-/*----------------------------------------------------------------------------*/
-Double_t get_delta_t(){
-    //
-    // get the time difference between start and end of the file
-    //
-    Double_t time,t_end,t_start;
-    
-    Int_t n_entries = run->GetEntries();
-    run->SetBranchAddress("time",&time);
-    run->GetEntry(0);
-    t_start = time;
-    run->GetEntry(n_entries-1);
-    t_end   = time;
-    
-    return t_end - t_start;
-}
 
 /*----------------------------------------------------------------------------*/
 void plot_spectrum(int ichannel){
+    //
     // plot the 1D energy spectrum for channel = ichannel
+    //
+    char hname[128];
+
     Double_t de = (emax-emin)/nbin;
-    TH1F *_e_all  = new TH1F("e_all","e_all",nbin,emin,emax);
-    TH1F *_e_good  = new TH1F("e_good","e_good",nbin,emin,emax);
-    TH1F *_e_err01 = new TH1F("e_err01","e_err01",nbin,emin,emax);
-    TH1F *_e_err02 = new TH1F("e_err02","e_err02",nbin,emin,emax);
-    // energy spectrum for good events
-    sprintf(cmd,"channel==%i",ichannel);
-    run->Draw("integral>>e_all",cmd);
-    sprintf(cmd,"channel==%i&&error==0",ichannel);
-    run->Draw("integral>>e_good",cmd);
-    // energy spectrum for the bad ones
-    sprintf(cmd,"channel==%i&&(error&0x01)!=0",ichannel);
-    run->Draw("integral>>e_err01",cmd);
-    sprintf(cmd,"channel==%i&&(error&0x02)!=0",ichannel);
-    run->Draw("integral>>e_err02",cmd);
+
+    sprintf(hname,"_e_all_ch%d",ichannel);
+    TH1F *_e_all  = (TH1F*)gDirectory->Get(hname);
+    sprintf(hname,"_e_good_ch%d",ichannel);
+    TH1F *_e_good  = (TH1F*)gDirectory->Get(hname);
+    sprintf(hname,"_e_err1_ch%d",ichannel);
+    TH1F *_e_err01  = (TH1F*)gDirectory->Get(hname);
+    sprintf(hname,"_e_err2_ch%d",ichannel);
+    TH1F *_e_err02  = (TH1F*)gDirectory->Get(hname);
+    
+
     // get time range
-    Double_t dt = get_delta_t();
+    Double_t dt = runtime->GetVal();
     // calculate total rate
     Double_t n_entries = _e_all->GetEntries();
     Double_t rate  = n_entries / dt;
@@ -103,26 +88,6 @@ void plot_spectrum(int ichannel){
     _e_err02->SetLineColor(6);
     _e_err02->Draw("same");
     leg->Draw();
-    
-    // indicate the full absorption peaks for our sources
-    TVector *epeak = new TVector(10);
-    //if        (ichannel == 2 || ichannel == 3){
-    //    epeak.push_back(511);
-    //} else if (ichannel == 4 || ichannel == 5){
-    //    epeak.push_back(1173);
-    //} else if (ichannel == 6 || ichannel == 7){
-    //    epeak.push_back(667);
-    //}
-    
-    Double_t yp = e_good->GetMaximum()*1.02;
-    //for(int ip = 0; ip<(int)peaks.size(); ip++){
-    Double_t xp = 667.;
-    cout <<xp<<" "<<yp<<endl;
-    TMarker *m = new TMarker(xp,yp,32);
-    m->SetMarkerSize(0.8);
-    m->Draw();
-    //}
-    
     
 }
 /*----------------------------------------------------------------------------*/
@@ -192,12 +157,12 @@ void monitor(string runname, string plot_type, int ichannel, bool log_scale, boo
     // documentation on top of this .C file
 
     // add files to the chain .....
-    sprintf(cmd,"%s*.root",runname.c_str());
-    run->Add(cmd);
+    //sprintf(cmd,"%s*.root",runname.c_str());
+    //run->Add(cmd);
     
     // open the first file: will be used to retrieve settings
-//    sprintf(cmd,"%s_000000.root",runname.c_str());
-//    TFile *_file = new TFile(cmd,"READONLY");
+    sprintf(cmd,"%s",runname.c_str());
+    _file = new TFile(cmd,"READONLY");
     
     // no statistics box
     gStyle->SetOptStat(0);
@@ -205,10 +170,10 @@ void monitor(string runname, string plot_type, int ichannel, bool log_scale, boo
     // what to plot?
     if        (plot_type == "spectrum") { // 1D energy spectrum
         plot_spectrum(ichannel);
-    } else if (plot_type == "2d"){ // 2D puls height as a function of energy
-        plot_2d(ichannel);
+    } else if (plot_type == "2d"){ // 2D puls height as a function of energ
+        // // RE_IMPLEMENT TO WORK ON ANA FILE plot_2d(ichannel);
     } else if (plot_type == "baseline"){
-        plot_baseline(ichannel);
+        // // RE_IMPLEMENT TO WORK ON ANA FILE plot_baseline(ichannel);
     } else {
         cout<< "Wrong plot type selected..... look at documentation in monitor.C"<<endl;
         return;
