@@ -124,6 +124,7 @@ void analyzer::get_interval_data(){
     
     cout<<"analyzer::get_interval_data:: time_since_start ="<<time_since_start<<endl;
     
+//    int huh;
     TCanvas *c1 = new TCanvas("c1","c1",600,400);
     Double_t bin_width = (emax-emin)/nbin;
     for(int ich=0; ich<NUMBER_OF_CHANNELS; ich++){
@@ -131,6 +132,7 @@ void analyzer::get_interval_data(){
         // find all the selected energy peaks
         //
         int      maxbin;
+        double   maxval;
         Double_t e_start, e0;
         for (int ipeak=0; ipeak<MAX_PEAKS; ipeak++){
             if(source_energy[ich][ipeak] >0){
@@ -148,7 +150,9 @@ void analyzer::get_interval_data(){
                     _pk_tmp[ich]->GetXaxis()->SetRangeUser(e_start-100,e_start+100);
                 }
                 maxbin  = _pk_tmp[ich]->GetMaximumBin();
+                maxval  = _pk_tmp[ich]->GetBinContent(maxbin);
                 e_start = _pk_tmp[ich]->GetBinCenter(maxbin);
+                
                 
                 _pk_tmp[ich]->GetXaxis()->SetRangeUser(0.,3000.);
                 _pk_tmp[ich]->Draw();
@@ -157,7 +161,7 @@ void analyzer::get_interval_data(){
                 // fit a Gauss + background to a photopeak
                 //
                 TF1 *func = new TF1("fit",fitf,e_start-200,e_start+200,5);
-                func->SetParameters(10000,e_start,25);
+                func->SetParameters(maxval,e_start,25);
                 func->SetParNames("C","mean","sigma");
                 
                 Double_t e_low  = e_start - 100;
@@ -183,6 +187,7 @@ void analyzer::get_interval_data(){
                 
                 tree->Fill();
                 c1->Update();
+//                cin>>huh;
                 
                 delete func;
             }
