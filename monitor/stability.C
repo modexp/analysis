@@ -7,9 +7,20 @@
 #define MAX_PEAKS 5
 
 TChain *run = new TChain("ana");
+TH1F *_hld;
+TLegend *_leg;
 
+// global variables
+Double_t tmin, tmax;
+
+Double_t v_tmp;
+Int_t    ich_tmp;
+Int_t    ipk_tmp;
+
+// initial values of variable that os selected
 float v0[NUMBER_OF_CHANNELS][MAX_PEAKS];
 
+// source names
 string source_name[] = {
     "none",
     "none",
@@ -38,7 +49,7 @@ float source_energy[NUMBER_OF_CHANNELS][MAX_PEAKS] =
 };
 
 TCanvas *c1 = new TCanvas("c1","c1",800,400);
-
+/*-------------------------------------------------------------------------------*/
 string get_figname(string fname){
     // extract figure name from the filename
     string figname = "";
@@ -52,70 +63,16 @@ string get_figname(string fname){
     
     return figname;
 }
-
-
-void getInitialValues(string var1){
-    // get the values of the parameter you want to plot at t=0.
-    // needed when plotting relative values
-    
-    char cmd[128];
-
-    Double_t v_tmp;
-    Int_t    ich_tmp,ipk_tmp;
-    sprintf(cmd,"%s",var1.c_str());
-    
-    cout << "cmd "<<cmd<<endl;
-    run->SetBranchAddress(cmd,&v_tmp);
-    run->SetBranchAddress("channel",&ich_tmp);
-    run->SetBranchAddress("peak",&ipk_tmp);
-    for(int i=MAX_PEAKS*NUMBER_OF_CHANNELS; i>=0; i--){
-        run->GetEntry(i);
-        v0[ich_tmp][ipk_tmp] = v_tmp;
-    }
-    return;
-}
-
-void chain_ana(string rootfile, string var, string type, bool save_plot){
+/*-------------------------------------------------------------------------------*/
+void initHistogram(string var, string type){
     //
-    // Plot rate, energy, resolution as a function of time.
+    // init histogram on which to plot graphs
     //
-    // Input: rootfile  - input root filename
-    //        var       - "energy", "rate","resolution"
-    //        type      - "abs", "rel"
-    //        save_plot - save plot to .pdf file (or other format)
-    //
-    // A.P. Colijn
-    //
-    char hname[128],cmd[128],cut[128];
-    //TFile *_f = new TFile(rootfile.c_str(),"READONLY");
-    
-
-    // add files to the chain .....
-    sprintf(cmd,"%s*.root",rootfile.c_str());
-    run->Add(cmd);
-    
-    
-    // get time range + list of filenames
-    Double_t tmin = 9e99, tmax = 0;
-    
-    // loop over the files....
-    TObjArray *fileElements=run->GetListOfFiles();
-    TIter next(fileElements);
-    TChainElement *chEl=0;
-    while (( chEl=(TChainElement*)next() )) {
-        TFile f(chEl->GetTitle());
-        cout << f.GetName() <<endl;
-        
-        if(t0->GetVal()<tmin) tmin = t0->GetVal();
-        if(t0->GetVal()+runtime->GetVal()>tmax) tmax = t0->GetVal()+runtime->GetVal();
-        
-        f.Close();
-    }
+    char hname[128], cmd[128];
     
     gStyle->SetOptStat(0);
-    cout << "stability:: plotting routine"<<endl;
-    
-    TH1F *_hld = new TH1F("hld","hld",1,tmin,tmax);
+
+    _hld = new TH1F("hld","hld",1,tmin,tmax);
     sprintf(hname,"%s",var.c_str());
     
     _hld->SetTitle(hname);
@@ -137,17 +94,49 @@ void chain_ana(string rootfile, string var, string type, bool save_plot){
         _hld->GetYaxis()->SetTitle(yname.c_str());
     }
     
-    int istyle;
-    
-    Double_t ymax = 0;
+    if(type == "abs"){
+        sprintf(cmd,"%s",var.c_str());
+        Double_t ymax = run->GetMaximum(cmd);
+        _hld->GetYaxis()->SetRangeUser(0.,1.6*ymax);
+    }
     
     // make a legend
-    TLegend *leg = new TLegend(0.65,0.63,0.95,0.89);
-    leg->SetFillStyle(0);
+    _leg = new TLegend(0.65,0.63,0.95,0.89);
+    _leg->SetFillStyle(0);
     
-    //getInitialValues(var);
-    Double_t v_tmp;
-    Int_t    ich_tmp,ipk_tmp;
+}
+/*-------------------------------------------------------------------------------*/
+void initTree(string rootfile){
+    //
+    // (i) init tree
+    // (ii) get time range
+    //
+    char cmd[128];
+    // add files to the chain .....
+    sprintf(cmd,"%s*.root",rootfile.c_str());
+    run->Add(cmd);
+    
+    tmin = 9e99;
+    tmax = 0;
+    
+    // loop over the files....
+    TObjArray *fileElements=run->GetListOfFiles();
+    TIter next(fileElements);
+    TChainElement *chEl=0;
+    while (( chEl=(TChainElement*)next() )) {
+        TFile f(chEl->GetTitle());
+        cout << f.GetName() <<endl;
+        
+        if(t0->GetVal()<tmin) tmin = t0->GetVal();
+        if(t0->GetVal()+runtime->GetVal()>tmax) tmax = t0->GetVal()+runtime->GetVal();
+        
+        f.Close();
+    }
+}
+/*-------------------------------------------------------------------------------*/
+void initVariable(string var){
+    char cmd[128];
+    
     sprintf(cmd,"%s",var.c_str());
     
     cout << "cmd "<<cmd<<endl;
@@ -158,7 +147,43 @@ void chain_ana(string rootfile, string var, string type, bool save_plot){
         run->GetEntry(i);
         v0[ich_tmp][ipk_tmp] = v_tmp;
     }
+}
+/*-------------------------------------------------------------------------------*/
+
+//
+// MAIN ROUTINE
+//
+void stability(string rootfile, string var, string type, bool save_plot){
+    //
+    // Plot rate, energy, resolution as a function of time.
+    //
+    // Input: rootfile  - input root filename
+    //        var       - "e", "rate","res"
+    //        type      - "abs", "rel"
+    //        save_plot - save plot to .pdf file (or other format)
+    //
+    // A.P. Colijn
+    //
+    char hname[128],cmd[128],cut[128];
+    cout << "chain_ana:: plotting routine"<<endl;
+
+    //
+    // (i) initialize the chain of trees
+    // (ii) retrieve the time range
+    //
+    initTree(rootfile);
     
+    //
+    // initialize the histogram on which all graphs will be drawn
+    //
+    initHistogram(var, type);
+    
+    //
+    // get the values at t=0 for the variable you want to plot (needed
+    // if you want to plot the relative value of a variable
+    //
+    initVariable(var);
+
     //
     // loop over all the channels
     //
@@ -182,27 +207,20 @@ void chain_ana(string rootfile, string var, string type, bool save_plot){
         sprintf(cmd, "ch%d - %s ", ich, source_name[ich].c_str());
         TLine *l1 = new TLine();
         l1->SetLineColor(ich+1);
-        leg->AddEntry(l1,cmd,"l");
+        _leg->AddEntry(l1,cmd,"l");
     }
-    
-    if(type == "abs"){
-        sprintf(cmd,"%s",var.c_str());
-        Double_t ymax = run->GetMaximum(cmd);
-        cout << ymax <<endl;
-        _hld->GetYaxis()->SetRangeUser(0.,1.6*ymax);
-    }
-    
+
     // draw the legend
-    leg->SetBorderSize(0);
-    leg->Draw();
+    _leg->SetBorderSize(0);
+    _leg->Draw();
     
     c1->Update();
     
     if(save_plot){
-        string figname = "plots/"+get_figname(rootfile)+"_"+var+"_"+type+".pdf";
+        string figname = "plots/"+var+"_"+type+".pdf";
         c1->Print(figname.c_str());
-        string figname = "plots/"+get_figname(rootfile)+"_"+var+"_"+type+".png";
+        string figname = "plots/"+var+"_"+type+".png";
         c1->Print(figname.c_str());
-    } 
+    }
     return;
 }
