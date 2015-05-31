@@ -12,6 +12,7 @@
 #include <TChain.h>
 #include <TFile.h>
 #include <TH1F.h>
+#include <TH2F.h>
 #include <string>
 #include <vector>
 #include <iostream>
@@ -71,6 +72,8 @@ class analyzer {
     // histograms
     TFile *_f;
     vector<TH1F*> _e_all,_e_good,_e_err1,_e_err2,_pk_tmp;
+    vector<TH1F*> _b_good,_b_err1,_b_err2;
+    vector<TH2F*> _2d_good,_2d_err1,_2d_err2;
     TH1F *_T;
     
     TTree *tree;

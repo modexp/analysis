@@ -70,15 +70,28 @@ void analyzer::book_histograms(){
         _e_err1.push_back(new TH1F(hname,hname,nbin,emin,emax));
         sprintf(hname,"_e_err2_ch%1d",ich);
         _e_err2.push_back(new TH1F(hname,hname,nbin,emin,emax));
+        // baseline
+        sprintf(hname,"_b_good_ch%1d",ich);
+        _b_good.push_back(new TH1F(hname,hname,nbin,0,base_max_val));
+        sprintf(hname,"_b_err1_ch%1d",ich);
+        _b_err1.push_back(new TH1F(hname,hname,nbin,0,base_max_val));
+        sprintf(hname,"_b_err2_ch%1d",ich);
+        _b_err2.push_back(new TH1F(hname,hname,nbin,0,base_max_val));
+        // integral vs peak
+        sprintf(hname,"_h_vs_E_good_ch%1d",ich);
+        _2d_good.push_back(new TH2F(hname,hname,nbin,emin,emax,nbin,0.,adc_max_volt));
+        sprintf(hname,"_h_vs_E_err1_ch%1d",ich);
+        _2d_err1.push_back(new TH2F(hname,hname,nbin,emin,emax,nbin,0.,adc_max_volt));
+        sprintf(hname,"_h_vs_E_err2_ch%1d",ich);
+        _2d_err2.push_back(new TH2F(hname,hname,nbin,emin,emax,nbin,0.,adc_max_volt));
         
         // temporary histograms for stability measurements
         sprintf(hname,"_pk_tmp%1d",ich);
         _pk_tmp.push_back(new TH1F(hname,hname,nbin,emin,emax));
     }
     
-    // temporary histogram for stability measurements
+    // temporary histogram for temperature measurements
     _T = new TH1F("T","T",1000,10+273.15,40+273.15);
-    
     
     // Define tree and branches
     tree = new TTree("ana", "Analyzed spectra");
@@ -103,9 +116,22 @@ void analyzer::fill_histograms(){
     if      (error == 0) {
         _pk_tmp[channel]->Fill(integral);
         _e_good[channel]->Fill(integral);
+        _b_good[channel]->Fill(baseline);
+        
+        _2d_good[channel]->Fill(integral,height);
     }
-    else if ((error&0x01)!=0) _e_err1[channel]->Fill(integral);
-    else if ((error&0x02)!=0) _e_err2[channel]->Fill(integral);
+    else if ((error&0x01)!=0) {
+        _e_err1[channel]->Fill(integral);
+        _b_err1[channel]->Fill(baseline);
+        
+        _2d_err1[channel]->Fill(integral,height);
+    }
+    else if ((error&0x02)!=0) {
+        _e_err2[channel]->Fill(integral);
+        _b_err2[channel]->Fill(baseline);
+        
+        _2d_err2[channel]->Fill(integral,height);
+    }
 }
 
 void analyzer::get_interval_data(){
@@ -124,7 +150,7 @@ void analyzer::get_interval_data(){
     
     cout<<"analyzer::get_interval_data:: time_since_start ="<<time_since_start<<endl;
     
-//    int huh;
+    //    int huh;
     TCanvas *c1 = new TCanvas("c1","c1",600,400);
     Double_t bin_width = (emax-emin)/nbin;
     for(int ich=0; ich<NUMBER_OF_CHANNELS; ich++){
@@ -171,7 +197,7 @@ void analyzer::get_interval_data(){
                     if(ipeak == 1) e_low  = e_start - 75;
                 }
                 _pk_tmp[ich]->Fit("fit","Q","",e_low,e_high);
-               
+                
                 Double_t peak        = func->GetParameter(0);
                 _t_energy            = func->GetParameter(1);
                 if(ipeak ==0) e0 = _t_energy;
@@ -187,7 +213,7 @@ void analyzer::get_interval_data(){
                 
                 tree->Fill();
                 c1->Update();
-//                cin>>huh;
+                //                cin>>huh;
                 
                 delete func;
             }
@@ -214,6 +240,14 @@ void analyzer::write_histograms(){
         _e_good[ich]->Write();
         _e_err1[ich]->Write();
         _e_err2[ich]->Write();
+        
+        _b_good[ich]->Write();
+        _b_err1[ich]->Write();
+        _b_err2[ich]->Write();
+        
+        _2d_good[ich]->Write();
+        _2d_err1[ich]->Write();
+        _2d_err2[ich]->Write();
     }
     
     char hname[128];
@@ -237,7 +271,7 @@ void analyzer::Loop()
     // book histograms
     //
     book_histograms();
-
+    
     //
     // start the event loop
     //
