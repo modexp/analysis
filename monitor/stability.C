@@ -38,7 +38,7 @@ float source_energy[NUMBER_OF_CHANNELS][MAX_PEAKS] =
 // NOTE: the first peak should be the highest in the spectrum (sub-optimal, but handy for finding)
 //
 {
-    {-1,-1,-1,-1,-1}, // channel0: no source
+    {1460,-1,-1,-1,-1}, // channel0: no source
     {-1,-1,-1,-1,-1}, // channel1: no source
     {511.,1157.020,511.+1157.020,-1,-1}, // channel2: 44Ti
     {511.,1157.020,511.+1157.020,-1,-1}, // channel3: 44Ti
@@ -187,7 +187,7 @@ void stability(string rootfile, string var, string type, bool save_plot){
     //
     // loop over all the channels
     //
-    for(int ich = 2; ich<NUMBER_OF_CHANNELS; ich++){
+    for(int ich = 0; ich<NUMBER_OF_CHANNELS; ich++){
         
         if(type == "abs"){
             sprintf(cmd,"%s:t0+time",var.c_str());

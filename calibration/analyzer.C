@@ -25,8 +25,8 @@ float source_energy[NUMBER_OF_CHANNELS][MAX_PEAKS] =
 // NOTE: the first peak should be the highest in the spectrum (sub-optimal, but handy for finding)
 //
 {
-    {-1,-1,-1,-1,-1}, // channel0: no source
-    {-1,-1,-1,-1,-1}, // channel1: no source
+    {1460.,-1,-1,-1,-1}, // channel0: no source
+    {1460.,-1,-1,-1,-1}, // channel1: no source
     {511.,1157.020,511.+1157.020,-1,-1}, // channel2: 44Ti
     {511.,1157.020,511.+1157.020,-1,-1}, // channel3: 44Ti
     {1173.2,1332.5,1173.2+1332.5,-1,-1}, // channel4: 60Co
@@ -159,7 +159,7 @@ void analyzer::get_interval_data(){
         //
         int      maxbin;
         double   maxval;
-        Double_t e_start, e0;
+        Double_t e_start, e0, demin, demax;
         for (int ipeak=0; ipeak<MAX_PEAKS; ipeak++){
             if(source_energy[ich][ipeak] >0){
                 //
@@ -170,11 +170,20 @@ void analyzer::get_interval_data(){
                 // first peak is special.... we use the GetMaximumBin() method in order
                 // to find this peak even if there is a shift in gain!
                 //
+    
+                
                 if (ipeak != 0 ) {
                     // get the position where the peak should be... according to the first fit
                     e_start = e0*source_energy[ich][ipeak] / source_energy[ich][0];
                     _pk_tmp[ich]->GetXaxis()->SetRangeUser(e_start-100,e_start+100);
+                } else {
+                    // special care for channel 0 & channel 1: these tend to have a high background at low energy!
+                    if (ich == 0 || ich ==1){
+                        e_start = source_energy[ich][0];
+                        _pk_tmp[ich]->GetXaxis()->SetRangeUser(e_start-100,e_start+100);
+                    }
                 }
+                
                 maxbin  = _pk_tmp[ich]->GetMaximumBin();
                 maxval  = _pk_tmp[ich]->GetBinContent(maxbin);
                 e_start = _pk_tmp[ich]->GetBinCenter(maxbin);
@@ -190,12 +199,21 @@ void analyzer::get_interval_data(){
                 func->SetParameters(maxval,e_start,25);
                 func->SetParNames("C","mean","sigma");
                 
-                Double_t e_low  = e_start - 100;
-                Double_t e_high = e_start + 100;
+                Double_t demin = 100;
+                Double_t demax = 100;
+
                 if(ich == 4 || ich == 5) { // 60Co has some peaks close to each other
-                    if(ipeak == 0) e_high = e_start + 75;
-                    if(ipeak == 1) e_low  = e_start - 75;
+                    if(ipeak == 0) demax = 75;
+                    if(ipeak == 1) demin = 75;
+                } else if (ich == 0 || ich == 1){
+                    demin = 200;
+                    demax = 200;
                 }
+                
+                
+                Double_t e_low  = e_start - demin;
+                Double_t e_high = e_start + demax;
+
                 _pk_tmp[ich]->Fit("fit","Q","",e_low,e_high);
                 
                 Double_t peak        = func->GetParameter(0);

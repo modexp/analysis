@@ -92,42 +92,40 @@ void plot_spectrum(int ichannel){
 }
 /*----------------------------------------------------------------------------*/
 void plot_2d(int ichannel){
+    char hname[128];
+    gStyle->SetOptLogz();
     // plot the pulse height as a function of energy
-    TH2F *_2d = new TH2F("h_vs_E","h_vs_E",nbin,emin,emax,nbin,0.,adc_max_volt);
+    sprintf(hname,"_h_vs_E_good_ch%i",ichannel);
+    TH2F *_2d_good = (TH2F*)gDirectory->Get(hname);
+    sprintf(hname,"_h_vs_E_err1_ch%i",ichannel);
+    TH2F *_2d_err1 = (TH2F*)gDirectory->Get(hname);
+    sprintf(hname,"_h_vs_E_err2_ch%i",ichannel);
+    TH2F *_2d_err2 = (TH2F*)gDirectory->Get(hname);
     
     sprintf(cmd,"Pulse height -vs- Energy: channel = %i",ichannel);
-    _2d->SetTitle(cmd);
-    _2d->GetXaxis()->SetTitle("E (keV)");
-    _2d->GetYaxis()->SetTitle("Pulse height (V)");
-    _2d->Draw("");
-    
-    run->SetMarkerColor(1);
-    sprintf(cmd,"channel==%i",ichannel);
-    run->Draw("height:integral",cmd,"same");
-    
-    run->SetMarkerColor(2);
-    sprintf(cmd,"channel==%i&&(error&0x01)!=0",ichannel);
-    run->Draw("height:integral",cmd,"same");
+    _2d_good->SetTitle(cmd);
+    _2d_good->SetMarkerColor(1);
+    _2d_good->GetXaxis()->SetTitle("E (keV)");
+    _2d_good->GetYaxis()->SetTitle("Pulse height (V)");
+    _2d_good->Draw("colz");
 
-    run->SetMarkerColor(6);
-    sprintf(cmd,"channel==%i&&(error&0x02)!=0",ichannel);
-    run->Draw("height:integral",cmd,"same");
+    _2d_err1->SetMarkerColor(2);
+    _2d_err1->Draw("same");
+    _2d_err2->SetMarkerColor(2);
+    _2d_err2->Draw("same");
+    _2d_good->Draw("samecolz");
     
 }
 /*----------------------------------------------------------------------------*/
 void plot_baseline(int ichannel){
-    // plot the 1D energy spectrum for channel = ichannel
-    TH1F *_b_good = new TH1F("b_good","b_good",nbin,0,base_max_val);
-    TH1F *_b_err01 = new TH1F("b_err01","b_err01",nbin,0,base_max_val);
-    TH1F *_b_err02 = new TH1F("b_err02","b_err02",nbin,0,base_max_val);
-    // energy spectrum for good events
-    sprintf(cmd,"channel==%i&&error==0",ichannel);
-    run->Draw("baseline>>b_good",cmd);
-    // energy spectrum for the bad ones
-    sprintf(cmd,"channel==%i&&(error&0x01)!=0",ichannel);
-    run->Draw("baseline>>b_err01",cmd);
-    sprintf(cmd,"channel==%i&&(error&0x02)!=0",ichannel);
-    run->Draw("baseline>>b_err02",cmd);
+    char hname[128];
+
+    sprintf(hname,"_b_good_ch%d",ichannel);
+    TH1F *_b_good  = (TH1F*)gDirectory->Get(hname);
+    sprintf(hname,"_b_err1_ch%d",ichannel);
+    TH1F *_b_err01  = (TH1F*)gDirectory->Get(hname);
+    sprintf(hname,"_b_err2_ch%d",ichannel);
+    TH1F *_b_err02  = (TH1F*)gDirectory->Get(hname);
     
     sprintf(cmd,"Baseline: channel = %i",ichannel);
     _b_good->SetTitle(cmd);
@@ -156,10 +154,6 @@ void monitor(string runname, string plot_type, int ichannel, bool log_scale, boo
 {
     // documentation on top of this .C file
 
-    // add files to the chain .....
-    //sprintf(cmd,"%s*.root",runname.c_str());
-    //run->Add(cmd);
-    
     // open the first file: will be used to retrieve settings
     sprintf(cmd,"%s",runname.c_str());
     _file = new TFile(cmd,"READONLY");
@@ -171,9 +165,9 @@ void monitor(string runname, string plot_type, int ichannel, bool log_scale, boo
     if        (plot_type == "spectrum") { // 1D energy spectrum
         plot_spectrum(ichannel);
     } else if (plot_type == "2d"){ // 2D puls height as a function of energ
-        // // RE_IMPLEMENT TO WORK ON ANA FILE plot_2d(ichannel);
+        plot_2d(ichannel);
     } else if (plot_type == "baseline"){
-        // // RE_IMPLEMENT TO WORK ON ANA FILE plot_baseline(ichannel);
+        plot_baseline(ichannel);
     } else {
         cout<< "Wrong plot type selected..... look at documentation in monitor.C"<<endl;
         return;

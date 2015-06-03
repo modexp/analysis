@@ -21,9 +21,9 @@
 
 // (1)You need to identify where the peaks are in the histograms of the integrals.
 // (2) Set range_low and range_high to find the range in which the peak with cal_energy should be
-const double range_low[NUMBER_OF_CHANNELS] ={0.,0.,0.05e-6,0.05e-6,0.,0.,0.,0.};
+const double range_low[NUMBER_OF_CHANNELS] ={0.16e-6,0.14e-6,0.05e-6,0.05e-6,0.,0.,0.,0.};
 const double range_high[NUMBER_OF_CHANNELS]={1e-6,1e-6,1e-6,1e-6,1e-6,1e-6,1e-6,1e-6};
-const double cal_energy[NUMBER_OF_CHANNELS]={1000.,1000.,511.,511.,1173.,1173.,661.7,661.7};
+const double cal_energy[NUMBER_OF_CHANNELS]={1460.,1460.,511.,511.,1173.,1173.,661.7,661.7};
 
 void ecal::Loop()
 {
