@@ -38,6 +38,7 @@ class analyzer {
     Double_t        time;
     UChar_t         istestpulse;
     Int_t           error;
+    Float_t           ratio;
     Float_t         baseline;
     Float_t         rms;
     Double_t         temp;
@@ -49,6 +50,7 @@ class analyzer {
     TBranch        *b_time;   //!
     TBranch        *b_istestpulse;   //!
     TBranch        *b_error;   //!
+    TBranch        *b_ratio;   //!
     TBranch        *b_baseline;   //!
     TBranch        *b_baselineRMS;   //!
     TBranch        *b_temp;   //!
@@ -71,9 +73,9 @@ class analyzer {
 
     // histograms
     TFile *_f;
-    vector<TH1F*> _e_all,_e_good,_e_err1,_e_err2,_pk_tmp;
-    vector<TH1F*> _b_good,_b_err1,_b_err2;
-    vector<TH2F*> _2d_good,_2d_err1,_2d_err2;
+    vector<TH1F*> _e_all,_e_good,_e_err1,_e_err2,_e_err4,_pk_tmp;
+    vector<TH1F*> _b_good,_b_err1,_b_err2,_b_err4;
+    vector<TH2F*> _2d_good,_2d_err1,_2d_err2,_2d_err4;
     TH1F *_T;
     
     TTree *tree;
@@ -176,6 +178,7 @@ void analyzer::Init(TChain *tree)
     fChain->SetBranchAddress("error", &error, &b_error);
     fChain->SetBranchAddress("baseline", &baseline, &b_baseline);
     fChain->SetBranchAddress("rms", &rms, &b_baselineRMS);
+    fChain->SetBranchAddress("ratio", &ratio, &b_ratio);
     fChain->SetBranchAddress("temp", &temp, &b_temp);
     Notify();
 }

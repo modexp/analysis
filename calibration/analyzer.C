@@ -70,6 +70,8 @@ void analyzer::book_histograms(){
         _e_err1.push_back(new TH1F(hname,hname,nbin,emin,emax));
         sprintf(hname,"_e_err2_ch%1d",ich);
         _e_err2.push_back(new TH1F(hname,hname,nbin,emin,emax));
+        sprintf(hname,"_e_err4_ch%1d",ich);
+        _e_err4.push_back(new TH1F(hname,hname,nbin,emin,emax));
         // baseline
         sprintf(hname,"_b_good_ch%1d",ich);
         _b_good.push_back(new TH1F(hname,hname,nbin,0,base_max_val));
@@ -77,6 +79,8 @@ void analyzer::book_histograms(){
         _b_err1.push_back(new TH1F(hname,hname,nbin,0,base_max_val));
         sprintf(hname,"_b_err2_ch%1d",ich);
         _b_err2.push_back(new TH1F(hname,hname,nbin,0,base_max_val));
+        sprintf(hname,"_b_err4_ch%1d",ich);
+        _b_err4.push_back(new TH1F(hname,hname,nbin,0,base_max_val));
         // integral vs peak
         sprintf(hname,"_h_vs_E_good_ch%1d",ich);
         _2d_good.push_back(new TH2F(hname,hname,nbin,emin,emax,nbin,0.,adc_max_volt));
@@ -84,6 +88,8 @@ void analyzer::book_histograms(){
         _2d_err1.push_back(new TH2F(hname,hname,nbin,emin,emax,nbin,0.,adc_max_volt));
         sprintf(hname,"_h_vs_E_err2_ch%1d",ich);
         _2d_err2.push_back(new TH2F(hname,hname,nbin,emin,emax,nbin,0.,adc_max_volt));
+        sprintf(hname,"_h_vs_E_err4_ch%1d",ich);
+        _2d_err4.push_back(new TH2F(hname,hname,nbin,emin,emax,nbin,0.,adc_max_volt));
         
         // temporary histograms for stability measurements
         sprintf(hname,"_pk_tmp%1d",ich);
@@ -131,6 +137,13 @@ void analyzer::fill_histograms(){
         _b_err2[channel]->Fill(baseline);
         
         _2d_err2[channel]->Fill(integral,height);
+    }
+    else if ((error&0x04)!=0) {
+    // temporary error handling: err4 is not a real error yet
+        _e_err4[channel]->Fill(integral);
+        _b_err4[channel]->Fill(baseline);
+        
+        _2d_err4[channel]->Fill(integral,height);
     }
 }
 
@@ -258,14 +271,17 @@ void analyzer::write_histograms(){
         _e_good[ich]->Write();
         _e_err1[ich]->Write();
         _e_err2[ich]->Write();
+        _e_err4[ich]->Write();
         
         _b_good[ich]->Write();
         _b_err1[ich]->Write();
         _b_err2[ich]->Write();
+        _b_err4[ich]->Write();
         
         _2d_good[ich]->Write();
         _2d_err1[ich]->Write();
         _2d_err2[ich]->Write();
+        _2d_err4[ich]->Write();
     }
     
     char hname[128];
