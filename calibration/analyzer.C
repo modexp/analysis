@@ -38,7 +38,9 @@ float source_energy[NUMBER_OF_CHANNELS][MAX_PEAKS] =
 //
 // ranges for plotting
 //
-const int   nbin = 600;
+const int   nbin0 = 600;
+// number of bins for the temporary fit histograms.... channels 0+1 have few entries so wider bins
+float nbin[NUMBER_OF_CHANNELS]={nbin0/4,nbin0/4,nbin0,nbin0,nbin0,nbin0,nbin0,nbin0};
 const float emin = 0.; // in keV
 const float emax = 3000.; // in keV
 const float adc_max_volt = 2.;
@@ -63,37 +65,37 @@ void analyzer::book_histograms(){
     for (int ich = 0; ich<NUMBER_OF_CHANNELS; ich++){
         // spectra
         sprintf(hname,"_e_all_ch%1d",ich);
-        _e_all.push_back(new TH1F(hname,hname,nbin,emin,emax));
+        _e_all.push_back(new TH1F(hname,hname,nbin0,emin,emax));
         sprintf(hname,"_e_good_ch%1d",ich);
-        _e_good.push_back(new TH1F(hname,hname,nbin,emin,emax));
+        _e_good.push_back(new TH1F(hname,hname,nbin0,emin,emax));
         sprintf(hname,"_e_err1_ch%1d",ich);
-        _e_err1.push_back(new TH1F(hname,hname,nbin,emin,emax));
+        _e_err1.push_back(new TH1F(hname,hname,nbin0,emin,emax));
         sprintf(hname,"_e_err2_ch%1d",ich);
-        _e_err2.push_back(new TH1F(hname,hname,nbin,emin,emax));
+        _e_err2.push_back(new TH1F(hname,hname,nbin0,emin,emax));
         sprintf(hname,"_e_err4_ch%1d",ich);
-        _e_err4.push_back(new TH1F(hname,hname,nbin,emin,emax));
+        _e_err4.push_back(new TH1F(hname,hname,nbin0,emin,emax));
         // baseline
         sprintf(hname,"_b_good_ch%1d",ich);
-        _b_good.push_back(new TH1F(hname,hname,nbin,0,base_max_val));
+        _b_good.push_back(new TH1F(hname,hname,nbin0,0,base_max_val));
         sprintf(hname,"_b_err1_ch%1d",ich);
-        _b_err1.push_back(new TH1F(hname,hname,nbin,0,base_max_val));
+        _b_err1.push_back(new TH1F(hname,hname,nbin0,0,base_max_val));
         sprintf(hname,"_b_err2_ch%1d",ich);
-        _b_err2.push_back(new TH1F(hname,hname,nbin,0,base_max_val));
+        _b_err2.push_back(new TH1F(hname,hname,nbin0,0,base_max_val));
         sprintf(hname,"_b_err4_ch%1d",ich);
-        _b_err4.push_back(new TH1F(hname,hname,nbin,0,base_max_val));
+        _b_err4.push_back(new TH1F(hname,hname,nbin0,0,base_max_val));
         // integral vs peak
         sprintf(hname,"_h_vs_E_good_ch%1d",ich);
-        _2d_good.push_back(new TH2F(hname,hname,nbin,emin,emax,nbin,0.,adc_max_volt));
+        _2d_good.push_back(new TH2F(hname,hname,nbin0,emin,emax,nbin0,0.,adc_max_volt));
         sprintf(hname,"_h_vs_E_err1_ch%1d",ich);
-        _2d_err1.push_back(new TH2F(hname,hname,nbin,emin,emax,nbin,0.,adc_max_volt));
+        _2d_err1.push_back(new TH2F(hname,hname,nbin0,emin,emax,nbin0,0.,adc_max_volt));
         sprintf(hname,"_h_vs_E_err2_ch%1d",ich);
-        _2d_err2.push_back(new TH2F(hname,hname,nbin,emin,emax,nbin,0.,adc_max_volt));
+        _2d_err2.push_back(new TH2F(hname,hname,nbin0,emin,emax,nbin0,0.,adc_max_volt));
         sprintf(hname,"_h_vs_E_err4_ch%1d",ich);
-        _2d_err4.push_back(new TH2F(hname,hname,nbin,emin,emax,nbin,0.,adc_max_volt));
+        _2d_err4.push_back(new TH2F(hname,hname,nbin0,emin,emax,nbin0,0.,adc_max_volt));
         
         // temporary histograms for stability measurements
         sprintf(hname,"_pk_tmp%1d",ich);
-        _pk_tmp.push_back(new TH1F(hname,hname,nbin,emin,emax));
+        _pk_tmp.push_back(new TH1F(hname,hname,nbin[ich],emin,emax));
     }
     
     // temporary histogram for temperature measurements
@@ -165,7 +167,7 @@ void analyzer::get_interval_data(){
     
     //    int huh;
     TCanvas *c1 = new TCanvas("c1","c1",600,400);
-    Double_t bin_width = (emax-emin)/nbin;
+    int huh;
     for(int ich=0; ich<NUMBER_OF_CHANNELS; ich++){
         //
         // find all the selected energy peaks
@@ -209,7 +211,8 @@ void analyzer::get_interval_data(){
                 // fit a Gauss + background to a photopeak
                 //
                 TF1 *func = new TF1("fit",fitf,e_start-200,e_start+200,5);
-                func->SetParameters(maxval,e_start,25);
+                Double_t res_start = 0.06/2.35*sqrt(662.)*sqrt(e_start);
+                func->SetParameters(maxval,e_start,res_start);
                 func->SetParNames("C","mean","sigma");
                 
                 Double_t demin = 100;
@@ -236,6 +239,7 @@ void analyzer::get_interval_data(){
                 _t_res = 0;
                 if(_t_energy>0) _t_res = 2.355*sigma/_t_energy ;
                 
+                Double_t bin_width = (emax-emin)/nbin[ich];
                 _t_rate = TMath::Sqrt(2*TMath::Pi())*sigma*peak / TIME_INTERVAL / bin_width;
                 cout <<"get_interval_data:: ich ="<<ich<<" ipeak = "<<ipeak<<" E = "<<_t_energy<<" keV  rate = "<<_t_rate<<" Hz  resolution  = "<<_t_res<<" % "<<endl;
                 
@@ -244,7 +248,7 @@ void analyzer::get_interval_data(){
                 
                 tree->Fill();
                 c1->Update();
-                //                cin>>huh;
+//                                cin>>huh;
                 
                 delete func;
             }

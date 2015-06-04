@@ -51,6 +51,8 @@ void plot_spectrum(int ichannel){
     TH1F *_e_err01  = (TH1F*)gDirectory->Get(hname);
     sprintf(hname,"_e_err2_ch%d",ichannel);
     TH1F *_e_err02  = (TH1F*)gDirectory->Get(hname);
+    sprintf(hname,"_e_err4_ch%d",ichannel);
+    TH1F *_e_err04  = (TH1F*)gDirectory->Get(hname);
     
 
     // get time range
@@ -63,6 +65,7 @@ void plot_spectrum(int ichannel){
     _e_good->Scale(1./dt);
     _e_err01->Scale(1./dt);
     _e_err02->Scale(1./dt);
+    _e_err04->Scale(1./dt);
     
     // plot title
     sprintf(cmd,"Spectrum: channel = %i. Rate = %6.3f #\pm %6.3f kHz",ichannel,rate/1000,drate/1000);
@@ -78,6 +81,7 @@ void plot_spectrum(int ichannel){
     leg->AddEntry(_e_good,"good events","f");
     leg->AddEntry(_e_err01,"overflow error","f");
     leg->AddEntry(_e_err02,"baseline rms error","f");
+    leg->AddEntry(_e_err04,"double peak error","f");
     leg->SetTextSize(0.03);
     leg->SetBorderSize(0);
     
@@ -87,6 +91,8 @@ void plot_spectrum(int ichannel){
     _e_err01->Draw("same");
     _e_err02->SetLineColor(6);
     _e_err02->Draw("same");
+    _e_err04->SetLineColor(4);
+    _e_err04->Draw("same");
     leg->Draw();
     
 }
@@ -101,6 +107,8 @@ void plot_2d(int ichannel){
     TH2F *_2d_err1 = (TH2F*)gDirectory->Get(hname);
     sprintf(hname,"_h_vs_E_err2_ch%i",ichannel);
     TH2F *_2d_err2 = (TH2F*)gDirectory->Get(hname);
+    sprintf(hname,"_h_vs_E_err4_ch%i",ichannel);
+    TH2F *_2d_err4 = (TH2F*)gDirectory->Get(hname);
     
     sprintf(cmd,"Pulse height -vs- Energy: channel = %i",ichannel);
     _2d_good->SetTitle(cmd);
@@ -113,6 +121,8 @@ void plot_2d(int ichannel){
     _2d_err1->Draw("same");
     _2d_err2->SetMarkerColor(2);
     _2d_err2->Draw("same");
+    _2d_err4->SetMarkerColor(2);
+    _2d_err4->Draw("same");
     _2d_good->Draw("samecolz");
     
 }
@@ -126,6 +136,8 @@ void plot_baseline(int ichannel){
     TH1F *_b_err01  = (TH1F*)gDirectory->Get(hname);
     sprintf(hname,"_b_err2_ch%d",ichannel);
     TH1F *_b_err02  = (TH1F*)gDirectory->Get(hname);
+    sprintf(hname,"_b_err4_ch%d",ichannel);
+    TH1F *_b_err04  = (TH1F*)gDirectory->Get(hname);
     
     sprintf(cmd,"Baseline: channel = %i",ichannel);
     _b_good->SetTitle(cmd);
