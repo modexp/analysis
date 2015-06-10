@@ -7,11 +7,11 @@
 #define MAX_PEAKS 5
 
 TChain *run = new TChain("ana");
-TH1F *_hld;
+TProfile *_hld;
 TLegend *_leg;
 
 // global variables
-Double_t tmin, tmax;
+Double_t emin, emax;
 
 Double_t v_tmp;
 Int_t    ich_tmp;
@@ -72,37 +72,13 @@ void initHistogram(string var, string type){
     
     gStyle->SetOptStat(0);
 
-    _hld = new TH1F("hld","hld",1,tmin,tmax);
+    _hld = new TProfile("hld","hld",100,0,3000,0.,0.2);
     sprintf(hname,"%s",var.c_str());
     
     _hld->SetTitle(hname);
-    _hld->GetXaxis()->SetTitle("time (sec)");
-    _hld->GetYaxis()->SetRangeUser(0.,300);
-    _hld->Draw();
-    if(type == "rel") {
-        _hld->GetYaxis()->SetRangeUser(-0.05,0.05);
-        _hld->GetYaxis()->SetTitle("(v - v(t=0)) / v(t=0)");
-    } else {
-        string yname;
-        if ( var == "rate" ){
-            yname = "Rate (Hz)";
-        } else if ( var == "e" ){
-            yname = "Energy (keV)";
-        } else if ( var == "res") {
-            yname = "FWHM/E";
-        }
-        _hld->GetYaxis()->SetTitle(yname.c_str());
-    }
-    
-    if(type == "abs"){
-        sprintf(cmd,"%s",var.c_str());
-        Double_t ymax = run->GetMaximum(cmd);
-        _hld->GetYaxis()->SetRangeUser(0.,1.6*ymax);
-    }
-    
-    // make a legend
-    _leg = new TLegend(0.65,0.63,0.95,0.89);
-    _leg->SetFillStyle(0);
+    _hld->GetXaxis()->SetTitle("Energy (keV)");
+    _hld->GetYaxis()->SetTitle("FWHM/E");
+    _hld->GetYaxis()->SetRangeUser(0.,0.1);
     
 }
 /*-------------------------------------------------------------------------------*/
@@ -153,13 +129,11 @@ void initVariable(string var){
 //
 // MAIN ROUTINE
 //
-void stability(string rootfile, string var, string type, bool save_plot){
+void resolution(string rootfile, bool save_plot){
     //
-    // Plot rate, energy, resolution as a function of time.
+    // Plot resolution as a function of energy
     //
     // Input: rootfile  - input root filename
-    //        var       - "e", "rate","res"
-    //        type      - "abs", "rel"
     //        save_plot - save plot to .pdf file (or other format)
     //
     // A.P. Colijn
@@ -176,50 +150,38 @@ void stability(string rootfile, string var, string type, bool save_plot){
     //
     // initialize the histogram on which all graphs will be drawn
     //
-    initHistogram(var, type);
+    initHistogram("xxx", "yyy");
     
     //
     // get the values at t=0 for the variable you want to plot (needed
     // if you want to plot the relative value of a variable
     //
-    initVariable(var);
+//    initVariable("xxx");
 
-    //
-    // loop over all the channels
-    //
-    for(int ich = 0; ich<NUMBER_OF_CHANNELS; ich++){
+    sprintf(cmd,"res:e>>hld");
         
-        if(type == "abs"){
-            sprintf(cmd,"%s:t0+time",var.c_str());
-            cout << " cmd ="<<cmd<<endl;
-        } else {
-            sprintf(cmd,"(%s-%f)/%f:t0+time",var.c_str(),v0[ich][0],v0[ich][0]);
-        }
-        //sprintf(cut,"(channel==%d)",ich);
+    TF1 *myfit = new TF1("resfit","sqrt(pow([0]/sqrt(x),2)+pow([1],2))", 400, 2600);
+    myfit->SetParameter(0,2);
+    myfit->SetParameter(1,0.01);
+    //TF1 *myfit = new TF1("resfit","[0]/sqrt(x)", 400, 3000);
+
+    run->Draw(cmd,"channel>1","prof");
+    _hld->SetTitle("Resolution");
+    _hld->SetMarkerStyle(24);
+    _hld->SetMarkerColor(1);
+    _hld->SetLineColor(1);
+    _hld->Fit("resfit");
+    _hld->Draw();
         
-        sprintf(cut,"(channel==%d)",ich);
-        run->SetMarkerStyle(1);
-        run->SetMarkerColor(ich+1);
-        run->SetLineColor(ich+1);
-        run->Draw(cmd,cut,"same");
-        
-        // add legend entry
-        sprintf(cmd, "ch%d - %s ", ich, source_name[ich].c_str());
-        TLine *l1 = new TLine();
-        l1->SetLineColor(ich+1);
-        _leg->AddEntry(l1,cmd,"l");
-    }
 
     // draw the legend
-    _leg->SetBorderSize(0);
-    _leg->Draw();
     
     c1->Update();
     
     if(save_plot){
-        string figname = "plots/"+var+"_"+type+".pdf";
+        string figname = "plots/res_vs_e.pdf";
         c1->Print(figname.c_str());
-        string figname = "plots/"+var+"_"+type+".png";
+        string figname = "plots/res_vs_e.png";
         c1->Print(figname.c_str());
     }
     return;
