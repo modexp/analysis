@@ -38,10 +38,18 @@ class analyzer {
     Double_t        time;
     UChar_t         istestpulse;
     Int_t           error;
-    Float_t           ratio;
+    Float_t         ratio;
     Float_t         baseline;
     Float_t         rms;
-    Double_t         temp;
+    Double_t        temp;
+    Double_t        pres;
+    Double_t        bx;
+    Double_t        by;
+    Double_t        bz;
+    Double_t        btot;
+    Double_t        humid;
+    
+    
     
     // List of branches
     TBranch        *b_channel;   //!
@@ -54,6 +62,12 @@ class analyzer {
     TBranch        *b_baseline;   //!
     TBranch        *b_baselineRMS;   //!
     TBranch        *b_temp;   //!
+    TBranch        *b_pres;   //!
+    TBranch        *b_bx;   //!
+    TBranch        *b_by;   //!
+    TBranch        *b_bz;   //!
+    TBranch        *b_btot;   //!
+    TBranch        *b_humid;   //!
     
     analyzer(string fname, string cname);
     virtual ~analyzer();
@@ -68,15 +82,18 @@ class analyzer {
     
     void book_histograms();
     void fill_histograms();
+    void reset_interval_data();
+    void add_interval_data();
+    void calculate_interval_data();
     void get_interval_data();
     void write_histograms();
-
+    
     // histograms
     TFile *_f;
     vector<TH1F*> _e_all,_e_good,_e_err1,_e_err2,_e_err4,_pk_tmp;
     vector<TH1F*> _b_good,_b_err1,_b_err2,_b_err4;
     vector<TH2F*> _2d_good,_2d_err1,_2d_err2,_2d_err4;
-    TH1F *_T;
+    //TH1F *_T;
     
     TTree *tree;
     
@@ -84,13 +101,23 @@ class analyzer {
     Double_t    _t_time;
     Int_t       _t_chanNum;
     Int_t       _t_peakNum;
-    Double_t    _t_rate; 
-    Double_t    _t_energy; 
+    Double_t    _t_rate;
+    Double_t    _t_energy;
     Double_t    _t_res;
     Double_t    _t_temp;
     
+    Double_t    _t_pres;
+    Double_t    _t_bx;
+    Double_t    _t_by;
+    Double_t    _t_bz;
+    Double_t    _t_btot;
+    Double_t    _t_humid;
+    
     // time information
     Double_t t0,tstart,time_since_start;
+    
+    // event counter in interval
+    Int_t n_interval;
 };
 
 #endif
@@ -110,7 +137,7 @@ analyzer::analyzer(string fname, string cname) : fChain(0)
     // extract the run number from the input directory
     
     // replace double // by / ..... just in case
-//    fname.replace(fname.find("//"),2,"/");
+    //    fname.replace(fname.find("//"),2,"/");
     size_t pos = fname.find_last_of("/");
     bool ok = true;
     size_t index = pos-1;
@@ -124,7 +151,7 @@ analyzer::analyzer(string fname, string cname) : fChain(0)
     }
     run = fname.substr(index+1, pos - index - 1);
     cout << "analyzer:: run = "<<run<<endl;
-
+    
     
     Init(tree);
 }
@@ -180,6 +207,14 @@ void analyzer::Init(TChain *tree)
     fChain->SetBranchAddress("rms", &rms, &b_baselineRMS);
     fChain->SetBranchAddress("ratio", &ratio, &b_ratio);
     fChain->SetBranchAddress("temp", &temp, &b_temp);
+    
+    fChain->SetBranchAddress("pres", &pres, &b_pres);
+    fChain->SetBranchAddress("bx", &bx, &b_bx);
+    fChain->SetBranchAddress("by", &by, &b_by);
+    fChain->SetBranchAddress("bz", &bz, &b_bz);
+    fChain->SetBranchAddress("btot", &btot, &b_btot);
+    fChain->SetBranchAddress("humid", &humid, &b_humid);
+    
     Notify();
 }
 

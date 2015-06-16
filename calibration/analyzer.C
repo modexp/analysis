@@ -46,6 +46,7 @@ const float emax = 3000.; // in keV
 const float adc_max_volt = 2.;
 const float base_max_val = 2000;
 
+/*----------------------------------------------------------------------------------------------------*/
 Double_t fitf(Double_t *v, Double_t *par)
 {
     Double_t arg = 0;
@@ -56,7 +57,7 @@ Double_t fitf(Double_t *v, Double_t *par)
     
     return fitval;
 }
-
+/*----------------------------------------------------------------------------------------------------*/
 void analyzer::book_histograms(){
     _f = new TFile(analyzer_file.c_str(),"RECREATE");
     
@@ -99,7 +100,7 @@ void analyzer::book_histograms(){
     }
     
     // temporary histogram for temperature measurements
-    _T = new TH1F("T","T",1000,10+273.15,40+273.15);
+    //_T = new TH1F("T","T",1000,10+273.15,40+273.15);
     
     // Define tree and branches
     tree = new TTree("ana", "Analyzed spectra");
@@ -112,13 +113,19 @@ void analyzer::book_histograms(){
     tree->Branch("e", &_t_energy, "e/D");
     tree->Branch("res", &_t_res, "res/D");
     tree->Branch("temp", &_t_temp, "temp/D");
+    tree->Branch("pres", &_t_pres, "pres/D");
+    tree->Branch("bx", &_t_bx, "bx/D");
+    tree->Branch("by", &_t_by, "by/D");
+    tree->Branch("bz", &_t_bz, "bz/D");
+    tree->Branch("btot", &_t_btot, "btot/D");
+    tree->Branch("humid", &_t_humid, "humid/D");
 }
-
+/*----------------------------------------------------------------------------------------------------*/
 void analyzer::fill_histograms(){
     // fill all the histograms
     
     channel = channel % 100 ;
-    _T->Fill(temp+273.15);
+    //_T->Fill(temp+273.15);
     
     _e_all[channel]->Fill(integral);
     if      (error == 0) {
@@ -141,14 +148,14 @@ void analyzer::fill_histograms(){
         _2d_err2[channel]->Fill(integral,height);
     }
     else if ((error&0x04)!=0) {
-    // temporary error handling: err4 is not a real error yet
+        // temporary error handling: err4 is not a real error yet
         _e_err4[channel]->Fill(integral);
         _b_err4[channel]->Fill(baseline);
         
         _2d_err4[channel]->Fill(integral,height);
     }
 }
-
+/*----------------------------------------------------------------------------------------------------*/
 void analyzer::get_interval_data(){
     //
     // analyze the data from a time interval.
@@ -160,8 +167,8 @@ void analyzer::get_interval_data(){
     _t_time  = (t0+time_since_start)/2.;
     
     // temperature
-    _t_temp  = _T->GetMean();
-    _T->Reset();
+    //_t_temp  = _T->GetMean();
+    //_T->Reset();
     
     cout<<"analyzer::get_interval_data:: time_since_start ="<<time_since_start<<endl;
     
@@ -185,7 +192,7 @@ void analyzer::get_interval_data(){
                 // first peak is special.... we use the GetMaximumBin() method in order
                 // to find this peak even if there is a shift in gain!
                 //
-    
+                
                 
                 if (ipeak != 0 ) {
                     // get the position where the peak should be... according to the first fit
@@ -217,7 +224,7 @@ void analyzer::get_interval_data(){
                 
                 Double_t demin = 100;
                 Double_t demax = 100;
-
+                
                 if(ich == 4 || ich == 5) { // 60Co has some peaks close to each other
                     if(ipeak == 0) demax = 75;
                     if(ipeak == 1) demin = 75;
@@ -229,7 +236,7 @@ void analyzer::get_interval_data(){
                 
                 Double_t e_low  = e_start - demin;
                 Double_t e_high = e_start + demax;
-
+                
                 _pk_tmp[ich]->Fit("fit","Q","",e_low,e_high);
                 
                 Double_t peak        = func->GetParameter(0);
@@ -248,7 +255,7 @@ void analyzer::get_interval_data(){
                 
                 tree->Fill();
                 c1->Update();
-//                                cin>>huh;
+                //                                cin>>huh;
                 
                 delete func;
             }
@@ -256,7 +263,7 @@ void analyzer::get_interval_data(){
         _pk_tmp[ich]->Reset(); // reset the histogram
     } // loop over channels
 }
-
+/*----------------------------------------------------------------------------------------------------*/
 void analyzer::write_histograms(){
     //
     // write a few parameters to file
@@ -298,7 +305,50 @@ void analyzer::write_histograms(){
     
     tree->Write();
 }
-
+/*----------------------------------------------------------------------------------------------------*/
+void analyzer::reset_interval_data(){
+    
+    n_interval = 0;
+    
+    _t_temp = 0;
+    _t_pres = 0;
+    _t_bx = 0;
+    _t_by = 0;
+    _t_bz = 0;
+    _t_btot = 0;
+    _t_humid = 0;
+    
+}
+/*----------------------------------------------------------------------------------------------------*/
+void analyzer::add_interval_data(){
+    
+    n_interval++;
+    
+    _t_temp += temp;
+    _t_pres += pres;
+    _t_bx += bx;
+    _t_by += by;
+    _t_bz += bz;
+    _t_btot += btot;
+    _t_humid += humid;
+    
+}
+/*----------------------------------------------------------------------------------------------------*/
+void analyzer::calculate_interval_data(){
+    if(n_interval>0){
+        _t_temp /= n_interval;
+        _t_pres /= n_interval;
+        _t_bx /= n_interval;
+        _t_by /= n_interval;
+        _t_bz /= n_interval;
+        _t_btot /= n_interval;
+        _t_humid /= n_interval;
+    }
+}
+/*----------------------------------------------------------------------------------------------------*/
+//
+// MAIN:: Loop routine
+//
 void analyzer::Loop()
 {
     // energy calibration for modulation detectors
@@ -325,7 +375,11 @@ void analyzer::Loop()
         //
         // process the time information.
         //
-        if (jentry == 0) tstart = time;
+        if (jentry == 0) {
+            tstart = time;
+            // reset all averages
+            reset_interval_data();
+        }
         time_since_start = time - tstart;
         if (jentry == 0) t0 = time_since_start;
         
@@ -334,13 +388,22 @@ void analyzer::Loop()
         //
         fill_histograms();
         //
+        // add the data for the slow control average calculations
+        //
+        add_interval_data();
+        //
         // if we exceed the maximum time interval, get all the data recorded
         // during this time. then reset time for a new interval....
         //
         if(time_since_start - t0 > TIME_INTERVAL) {
+            // calculate the slow control avarages
+            calculate_interval_data();
+            // fitting of the peaks
             get_interval_data();
             // reset the time for the start of the next interval
             t0 = time_since_start;
+            // reset the interval data for calculating averages
+            reset_interval_data();
         }
         
         if(jentry%500000 == 0) cout<<"Processed "<<jentry<<" events"<<endl;
