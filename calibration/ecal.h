@@ -1,18 +1,33 @@
-//////////////////////////////////////////////////////////
-// This class has been automatically generated on
-// Tue Mar  3 13:48:08 2015 by ROOT version 5.34/21
-// from TTree T/Source data
-// found on file: mx_n_20150226_1552_000000.bin.root
-//////////////////////////////////////////////////////////
-
 #ifndef ecal_h
 #define ecal_h
 #include <iostream>
 #include <stdio.h>
 #include <TROOT.h>
+#include <TH1F.h>
 #include <TChain.h>
 #include <TFile.h>
 #include <string>
+#include <vector>
+
+/*----------------------------------------------------------------------------*/
+
+#define CHANNEL0 0
+#define CHANNEL1 1
+#define CHANNEL2 2
+#define CHANNEL3 3
+#define CHANNEL4 4
+#define CHANNEL5 5
+#define CHANNEL6 6
+#define CHANNEL7 7
+
+#define NUMBER_OF_CHANNELS 8
+#define MAX_PEAKS 5
+#define MAX_PARAMETERS 3
+
+#define BEFORE_CALIBRATION 0
+#define AFTER_CALIBRATION 1
+
+/*----------------------------------------------------------------------------*/
 
 // Header file for the classes stored in the TTree if any.
 
@@ -53,6 +68,19 @@ public :
    virtual void     Loop();
    virtual Bool_t   Notify();
    virtual void     Show(Long64_t entry = -1);
+    
+   // histograms for calibration fitting
+    void book_histograms();
+    void fill_histograms(int ilevel);
+    
+    
+    TFile *_f;
+    
+    std::vector<TH1F*> _integral;
+    std::vector<TH1F*> _energy;
+    std::vector<TH1F*> _energy_all;
+
+    double ccal[NUMBER_OF_CHANNELS][MAX_PARAMETERS];
 };
 
 #endif
