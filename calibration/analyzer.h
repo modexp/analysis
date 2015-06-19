@@ -1,13 +1,7 @@
-//////////////////////////////////////////////////////////
-// This class has been automatically generated on
-// Tue Mar  3 13:48:08 2015 by ROOT version 5.34/21
-// from TTree T/Source data
-// found on file: mx_n_20150226_1552_000000.bin.root
-//////////////////////////////////////////////////////////
-
 #ifndef analyzer_h
 #define analyzer_h
 
+#include <RooRealVar.h>
 #include <TROOT.h>
 #include <TChain.h>
 #include <TFile.h>
@@ -87,6 +81,10 @@ class analyzer {
     void calculate_interval_data();
     void get_interval_data();
     void write_histograms();
+    void fit_spectrum(int ichannel);
+    void fit_spectrum_simple(int ichannel);
+    void addTreeEntry(Double_t E, Double_t R, Double_t dR, Double_t res, Int_t ich, Int_t ipk);
+    void processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealVar sig, int ichannel, int ipeak);
     
     // histograms
     TFile *_f;
@@ -102,6 +100,7 @@ class analyzer {
     Int_t       _t_chanNum;
     Int_t       _t_peakNum;
     Double_t    _t_rate;
+    Double_t    _t_drate;
     Double_t    _t_energy;
     Double_t    _t_res;
     Double_t    _t_temp;
