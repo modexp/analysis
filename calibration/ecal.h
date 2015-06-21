@@ -27,6 +27,9 @@
 #define BEFORE_CALIBRATION 0
 #define AFTER_CALIBRATION 1
 
+#define CALIBRATION_MODE 1
+#define TIME_INTERVAL 1800 
+
 /*----------------------------------------------------------------------------*/
 
 // Header file for the classes stored in the TTree if any.
@@ -72,6 +75,11 @@ public :
    // histograms for calibration fitting
     void book_histograms();
     void fill_histograms(int ilevel);
+    void ecal_single();
+    void ecal_continuous();
+    void do_calibration();
+    void reset_histograms();
+    void fill_tree(Double_t t0, Double_t t1);
     
     
     TFile *_f;
@@ -79,7 +87,21 @@ public :
     std::vector<TH1F*> _integral;
     std::vector<TH1F*> _energy;
     std::vector<TH1F*> _energy_all;
-
+    //
+    // time information: needed if you wish to have calibrations in continuous mode
+    //
+    Double_t t0,tstart,time_since_start;
+    //
+    // calibration output tree
+    //
+    TTree *_cal_tree;
+    
+    Double_t _cal_tmin;
+    Double_t _cal_tmax;
+    std::vector<Double_t> _cal_c0;
+    std::vector<Double_t> _cal_c1;
+    std::vector<Double_t> _cal_c2;
+    
     double ccal[NUMBER_OF_CHANNELS][MAX_PARAMETERS];
 };
 

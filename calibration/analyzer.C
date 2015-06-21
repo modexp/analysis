@@ -80,11 +80,11 @@ void analyzer::fit_spectrum(int ichannel){
   // the BG function from a histogram
   string mc_file="";
   if       (ichannel == 2 || ichannel == 3){
-      mc_file = "/user/z37/Modulation/analysis/RooTest/MC_ti44_modulation.root";
+      mc_file = "/user/z37/Modulation/analysis/calibration/MC_ti44_modulation.root";
   } else if(ichannel == 4 || ichannel == 5){
-      mc_file = "/user/z37/Modulation/analysis/RooTest/MC_co60_modulation.root";
+      mc_file = "/user/z37/Modulation/analysis/calibration/MC_co60_modulation.root";
   } else if(ichannel == 6 || ichannel == 7){
-      mc_file = "/user/z37/Modulation/analysis/RooTest/MC_cs137_modulation.root";
+      mc_file = "/user/z37/Modulation/analysis/calibration/MC_cs137_modulation.root";
   }
 
   TFile *f_mc = new TFile(mc_file.c_str(),"READONLY");
@@ -100,7 +100,6 @@ void analyzer::fit_spectrum(int ichannel){
   RooRealVar sigma1("sigma1","width of gaussians",25,5.,50.) ;
   RooRealVar g1frac("g1frac","fraction of gauss1",0.2,0.0,1.0) ;
   RooGaussian gauss1("gauss1","gaussian PDF",E,mean1,sigma1) ;
-
   // second Gauss....
   Eval = source_energy[ichannel][1];
   RooRealVar mean2("mean2","mean of gaussian 2",Eval,Eval-50,Eval+50);

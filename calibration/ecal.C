@@ -57,12 +57,37 @@ void ecal::book_histograms(){
     for (int ich = 0; ich <NUMBER_OF_CHANNELS; ich++){
         sprintf(tmp,"integral_ch%02d",ich);
         _integral.push_back(new TH1F(tmp,tmp,1000,0.,1e-6));
-        sprintf(tmp,"energy_ch%02d",ich);
-        _energy.push_back(new TH1F(tmp,tmp,1000,0.,3000.));
-        sprintf(tmp,"energy_all_ch%02d",ich);
-        _energy_all.push_back(new TH1F(tmp,tmp,1000,0.,3000.));
-        
+        //
+        // plots are only meaningfull if CALIBRATION_MODE==0
+        //
+        if(CALIBRATION_MODE == 0){
+            sprintf(tmp,"energy_ch%02d",ich);
+            _energy.push_back(new TH1F(tmp,tmp,1000,0.,3000.));
+            sprintf(tmp,"energy_all_ch%02d",ich);
+            _energy_all.push_back(new TH1F(tmp,tmp,1000,0.,3000.));
+        }
     }
+    
+    //
+    // book output root tree for calibration constants
+    //
+    _cal_tree = new TTree("cal","energy calibration data");
+    _cal_tree->Branch("cal_tmin", &_cal_tmin, "cal_tmin/D");
+    _cal_tree->Branch("cal_tmax", &_cal_tmax, "cal_tmax/D");
+    _cal_tree->Branch("c0",&_cal_c0);
+    _cal_tree->Branch("c1",&_cal_c1);
+    _cal_tree->Branch("c2",&_cal_c2);
+    //
+    // initialize the vectors to length NUMBER_OF_CHANNELS
+    //
+    _cal_tmin = 0;
+    _cal_tmax = 9e99;
+    for(int ich=0;ich<NUMBER_OF_CHANNELS;ich++) {
+        _cal_c0.push_back(0.0);
+        _cal_c1.push_back(0.0);
+        _cal_c2.push_back(0.0);
+    }
+    
     cout <<"ecal::book_histograms ... done"<<endl;
 }
 /*---------------------------------------------------------------------------------------------------*/
@@ -94,6 +119,114 @@ void ecal::fill_histograms(int ilevel){
 void ecal::Loop()
 {
     //
+    // howto do the calibration....
+    //
+    if (CALIBRATION_MODE == 0) {
+        //
+        // one single calibration from all the specified input files
+        //
+        ecal_single();
+    } else {
+        //
+        // multiple calibrations made in interval lengths specified by the TIME_INTERVAL variable
+        //
+        ecal_continuous();
+    }
+    //
+    // done
+    //
+}
+
+/*---------------------------------------------------------------------------------------------------*/
+void ecal::ecal_continuous(){
+    //
+    // energy calibration for modulation detectors
+    //
+    if (fChain == 0) return;
+    //
+    // book the histograms needed for the energy calibration
+    //
+    book_histograms();
+    
+    //
+    // prepare the event loop
+    //
+    Long64_t nentries = fChain->GetEntriesFast();
+    cout<<"Start calibration loop.... nentries ="<<nentries<<endl;
+    Long64_t nbytes = 0, nb = 0;
+    
+    //
+    // loop over all events in the tree
+    //
+    for (Long64_t jentry=0; jentry<nentries;jentry++) {
+        Long64_t ientry = LoadTree(jentry);
+        if (ientry < 0) break;
+        nb = fChain->GetEntry(jentry);   nbytes += nb;
+        
+        //
+        // process the time information.
+        //
+        if (jentry == 0) {
+            tstart = time;
+            // SET THE MINIMUM TIME OF THE FIRST INTERVAL
+            _cal_tmin = time;
+        }
+        time_since_start = time - tstart;
+        if (jentry == 0) t0 = time_since_start;
+        
+        // fill the hisotgrams with 'good' events
+        channel = channel % 100;
+        
+        //
+        // fill the histogram
+        //
+        if(error == 0) _integral[channel]->Fill(integral);
+        
+        if(time_since_start - t0 > TIME_INTERVAL) {
+            // maximum validity time of this calibration....
+            _cal_tmax = time;
+            //
+            // do the calibration
+            //
+            do_calibration();
+            //
+            // file the output tree
+            //
+            fill_tree(_cal_tmin,_cal_tmax);
+            //
+            // reset the histograms
+            //
+            reset_histograms();
+            //
+            // reset the time for the start of the next interval
+            //
+            t0 = time_since_start;
+            // SET THE MINIMUM TIME OF THE NEXT INTERVAL
+            _cal_tmin = time;
+        }
+        if(jentry%100000 == 0) cout<<"Processed "<<jentry<<" events"<<endl;
+    }
+    //
+    // if the last bit of data dont have their own calibration, use the previous
+    //
+    fill_tree(_cal_tmin,9e99);
+
+    
+    _f->Write();
+    _f->Close();
+}
+/*---------------------------------------------------------------------------------------------------*/
+void ecal::reset_histograms(){
+    //
+    // the histograms need to be reset for the next calibration period
+    //
+    for(int ich=0; ich<NUMBER_OF_CHANNELS; ich++)
+        _integral[ich]->Reset();
+    
+}
+/*---------------------------------------------------------------------------------------------------*/
+void ecal::ecal_single(){
+    //
     // energy calibration for modulation detectors
     //
     if (fChain == 0) return;
@@ -106,6 +239,72 @@ void ecal::Loop()
     //
     fill_histograms(BEFORE_CALIBRATION);
     
+    //
+    // do the actual calibration
+    //
+    do_calibration();
+    
+    //
+    // write the output parameters to TParameters (legacy)
+    //
+    char parname[100];
+    for(int ich=0; ich<NUMBER_OF_CHANNELS; ich++){
+        for(int ipar=0; ipar<MAX_PARAMETERS; ipar++){
+            sprintf(parname,"cal_ch%02d_c%i",ich,ipar);
+            TParameter <double> *p1 = new TParameter<double>(parname,ccal[ich][ipar]);
+            p1->Write();
+        }
+    }
+    //
+    // write the ouptput parameters to the TTree
+    //
+    fill_tree(0,9e99); // valid for teh ful run
+    
+    //
+    // loop over the events and fill histograms: post-calibration
+    //
+    fill_histograms(AFTER_CALIBRATION);
+    
+    
+    _f->Write();
+    _f->Close();
+    
+}
+
+/*---------------------------------------------------------------------------------------------------*/
+void ecal::fill_tree(Double_t t0, Double_t t1){
+    //
+    // validity range of this calibration
+    //
+    _cal_tmin = t0;
+    _cal_tmax = t1;
+
+    //
+    // fill the tree variables (the time window variables are set earlier....
+    //
+    for(int ich = 0; ich<NUMBER_OF_CHANNELS; ich++){
+        _cal_c0[ich] = ccal[ich][0];
+        _cal_c1[ich] = ccal[ich][1];
+        _cal_c2[ich] = ccal[ich][2];
+        
+    }
+    //
+    // write to tree
+    //
+    _cal_tree->Fill();
+
+}
+
+/*---------------------------------------------------------------------------------------------------*/
+void ecal::do_calibration(){
+    //
+    // Fit the calibration parameters from the spectrum
+    //
+    // Strategy: (i) if there is only one photo peak the calibration is a simple proportionality constant
+    //           (ii) fit a 1st order polynomial if there are multiple photo peaks identified
+    //
+    // AP
+    //
     TCanvas *c1 = new TCanvas("c1","c1",600,400);
     int huh;
     char parname[100];
@@ -130,7 +329,7 @@ void ecal::Loop()
         int ibin      = _integral[ich]->GetMaximumBin();
         double val    = _integral[ich]->GetBinCenter(ibin);
         double maxval = _integral[ich]->GetBinContent(ibin);
-
+        
         
         Double_t ee[MAX_PEAKS];
         Double_t dee[MAX_PEAKS];
@@ -157,19 +356,21 @@ void ecal::Loop()
             //
             // fit a Gauss around the desired location in the spectrum
             //
-
+            
             // starting value for the height
             _integral[ich]->GetXaxis()->SetRangeUser(vlow,vhigh);
             ibin   = _integral[ich]->GetMaximumBin();
             maxval = _integral[ich]->GetBinContent(ibin);
             _integral[ich]->GetXaxis()->SetRangeUser(0.,1.);
-
+            
             
             // do the fit
             TF1 *func = new TF1("fit",fitf_gauss,vlow,vhigh,4);
             func->SetParameters(maxval,val,0.01e-7);
             func->SetParNames("C","mean","sigma");
             _integral[ich]->Fit("fit","Q","",vlow,vhigh);
+            _integral[ich]->Draw();
+            c1->Update();
             
             // get the parameters
             ee[ipeak]     = source_energy[ich][ipeak];
@@ -195,7 +396,7 @@ void ecal::Loop()
             TGraphErrors *gcal = new TGraphErrors(npeak,ee,area,0,darea);
             gcal->Fit("pol1");
             TF1 *ff = gcal->GetFunction("pol1");
-            // get the parameters.... but remember I have fitted teh inverse calibration here
+            // get the parameters.... but remember I have fitted the inverse calibration here
             // so now I need to invert as well....
             //   integral = v0+v1*E  -> E = -v0/v1 + 1/v1 * integral
             Double_t v0 = ff->GetParameter(0);
@@ -205,20 +406,9 @@ void ecal::Loop()
             ccal[ich][1] = 1/v1;
             ccal[ich][2] = 0;
         }
-        
-        for(int ipar=0; ipar<MAX_PARAMETERS; ipar++){
-            sprintf(parname,"cal_ch%02d_c%i",ich,ipar);
-            TParameter <double> *p1 = new TParameter<double>(parname,ccal[ich][ipar]);
-            p1->Write();
-        }
     }
-    
-    //
-    // loop over the events and fill histograms: post-calibration
-    //
-    fill_histograms(AFTER_CALIBRATION);
-    
-    
-    _f->Write();
-    _f->Close();
 }
+/*---------------------------------------------------------------------------------------------------*/
+
+
+

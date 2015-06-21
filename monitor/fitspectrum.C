@@ -31,6 +31,8 @@ void fitspectrum(string data_file, string mc_file, int ichannel){
   //
   cout <<"Welcome to the Modulation spectrum fitter"<<endl;
   RooRealVar E("E (keV)","E (keV)",emin,emax);
+  RooRealVar scale("scale","scale",1.,0.9,1.1);
+  RooFormulaVar Escale("Escale","E*scale",RooArgSet(E,scale));
 
   // the BG function from a histogram
   TFile *f_mc = new TFile(mc_file.c_str(),"READONLY");
@@ -59,7 +61,7 @@ void fitspectrum(string data_file, string mc_file, int ichannel){
   RooGaussian gauss3("gauss3","gaussian PDF",E,mean3,sigma3) ;  
 
   // normalization 
-  RooRealVar Norm("Norm","Number of events in 1st Gauss",1e6,0.,1e12);
+  RooRealVar Norm("Norm","Number of events in 1st Gauss",4e7,0.,1e12);
 
   // Gaussian functions for the extra photo-peaks + BG
   double fit_range[2];
