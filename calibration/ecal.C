@@ -72,20 +72,24 @@ void ecal::book_histograms(){
     // book output root tree for calibration constants
     //
     _cal_tree = new TTree("cal","energy calibration data");
+    _cal_tree->Branch("id", &_cal_index, "id/I");
     _cal_tree->Branch("cal_tmin", &_cal_tmin, "cal_tmin/D");
     _cal_tree->Branch("cal_tmax", &_cal_tmax, "cal_tmax/D");
     _cal_tree->Branch("c0",&_cal_c0);
     _cal_tree->Branch("c1",&_cal_c1);
     _cal_tree->Branch("c2",&_cal_c2);
+    _cal_tree->Branch("chi2",&_cal_chi2);
     //
     // initialize the vectors to length NUMBER_OF_CHANNELS
     //
+    _cal_index = 0;
     _cal_tmin = 0;
     _cal_tmax = 9e99;
     for(int ich=0;ich<NUMBER_OF_CHANNELS;ich++) {
         _cal_c0.push_back(0.0);
         _cal_c1.push_back(0.0);
         _cal_c2.push_back(0.0);
+        _cal_chi2.push_back(0.0);
     }
     
     cout <<"ecal::book_histograms ... done"<<endl;
@@ -286,8 +290,10 @@ void ecal::fill_tree(Double_t t0, Double_t t1){
         _cal_c0[ich] = ccal[ich][0];
         _cal_c1[ich] = ccal[ich][1];
         _cal_c2[ich] = ccal[ich][2];
-        
+        _cal_chi2[ich] = cal_quality[ich]; 
     }
+
+    _cal_index++;
     //
     // write to tree
     //
@@ -305,8 +311,9 @@ void ecal::do_calibration(){
     //
     // AP
     //
-    TCanvas *c1 = new TCanvas("c1","c1",600,400);
-    int huh;
+//    TCanvas *cv1 = new TCanvas("cv1","cv1",600,400);
+//    c1->Draw();
+//    int huh;
     char parname[100];
     for(int ich=0; ich<NUMBER_OF_CHANNELS; ich++){
         cout <<"CHANNEL = "<<ich<<endl;
@@ -333,24 +340,32 @@ void ecal::do_calibration(){
         
         Double_t ee[MAX_PEAKS];
         Double_t dee[MAX_PEAKS];
-        Double_t area[MAX_PEAKS];
-        Double_t darea[MAX_PEAKS];
-        Double_t mean_integrals[MAX_PEAKS];
+        Double_t Vs_peak[MAX_PEAKS];
+        Double_t dVs_peak[MAX_PEAKS];
+        Double_t chi2_fit_av=0;
         
         Double_t vlow,vhigh;
         for(int ipeak = 0; ipeak<npeak; ipeak++){
+            //
+            // Rough estimate of the expected resolution
+            //
+            Double_t sig_expected = 1.5/sqrt(source_energy[ich][ipeak])/2.35;
             //
             // fit ranges: if you are the first peak, then we use as start value for
             // the mean the maximum bin as found above. otherwise we scale the
             // starting point from the energy peak we found before in the first fit
             //
-            if (ipeak != 0) val = area[0]*source_energy[ich][ipeak]/source_energy[ich][0];
-            vlow  = val - 0.035e-6;
-            vhigh = val + 0.035e-6;
+            if (ipeak != 0) val = Vs_peak[0]*source_energy[ich][ipeak]/source_energy[ich][0];
+            sig_expected = sig_expected*val; // scale resolution to uncalibrated energy
+
+            vlow  = val - 5*sig_expected;//0.025e-6;
+            vhigh = val + 5*sig_expected;//0.025e-6;
             
-            if(channel == 4 || channel ==5){
-                if(ipeak == 0 ) vhigh = val+0.015e-6;
-                if(ipeak == 1 ) vlow  = val-0.015e-6;
+            if(ich == 4 || ich ==5){
+                if(ipeak == 0 ) {
+                    vhigh = val+3*sig_expected;//0.015e-6;
+                }
+                if(ipeak == 1 ) vlow  = val-3*sig_expected;//0.015e-6;
             }
             
             //
@@ -365,18 +380,25 @@ void ecal::do_calibration(){
             
             
             // do the fit
-            TF1 *func = new TF1("fit",fitf_gauss,vlow,vhigh,4);
-            func->SetParameters(maxval,val,0.01e-7);
+            TF1 *func = new TF1("fit",fitf_gauss,vlow,vhigh,5);
+            func->SetParameters(maxval,val,sig_expected);
             func->SetParNames("C","mean","sigma");
             _integral[ich]->Fit("fit","Q","",vlow,vhigh);
-            _integral[ich]->Draw();
-            c1->Update();
+//            if(ich==2 || ich==4){
+//              cout << ich<<" " <<ipeak <<" chi2 = "<<func->GetChisquare() / func->GetNDF()<<endl;
+//              _integral[ich]->Draw();
+//              cv1->Update();
+//              cin>>huh;
+//            }
             
+            //
             // get the parameters
-            ee[ipeak]     = source_energy[ich][ipeak];
-            dee[ipeak]    = 0.;
-            area[ipeak]   = func->GetParameter(1);
-            darea[ipeak]  = func->GetParError(1);
+            //
+            ee[ipeak]       = source_energy[ich][ipeak];
+            dee[ipeak]      = 0.;
+            Vs_peak[ipeak]  = func->GetParameter(1);
+            dVs_peak[ipeak] = func->GetParError(1);
+            chi2_fit_av    += func->GetChisquare() / func->GetNDF();
         }
         
         //
@@ -385,7 +407,7 @@ void ecal::do_calibration(){
         //
         if (npeak == 1){ // just one point... so the energy calibration is a simple proportionality
             ccal[ich][0] = 0;
-            ccal[ich][1] = source_energy[ich][0] / area[0];
+            ccal[ich][1] = source_energy[ich][0] / Vs_peak[0];
             ccal[ich][2] = 0;
         } else if(npeak > 1){ // more than one point... now we fit a straight line
             //
@@ -393,7 +415,7 @@ void ecal::do_calibration(){
             // like this because I have the errors on the area, and the energy points are
             // infinitely precise - just the photo peak energy values.
             //
-            TGraphErrors *gcal = new TGraphErrors(npeak,ee,area,0,darea);
+            TGraphErrors *gcal = new TGraphErrors(npeak,ee,Vs_peak,0,dVs_peak);
             gcal->Fit("pol1");
             TF1 *ff = gcal->GetFunction("pol1");
             // get the parameters.... but remember I have fitted the inverse calibration here
@@ -405,10 +427,18 @@ void ecal::do_calibration(){
             ccal[ich][0] = -v0/v1;
             ccal[ich][1] = 1/v1;
             ccal[ich][2] = 0;
+           
+
+            // // // TEST TEST 2ND order polynomial - errors are bad...... but representative
+            ////TGraphErrors *gcal2 = new TGraphErrors(npeak,Vs_peak,ee,0,dVs_peak);
+            ////gcal2->Fit("pol2");
+            ////TF1 *gg = gcal2->GetFunction("pol2");
+            ////ccal[ich][0] = gg->GetParameter(0);
+            ////ccal[ich][1] = gg->GetParameter(1);
+            ////ccal[ich][2] = gg->GetParameter(2);
+
         }
+        cal_quality[ich] = chi2_fit_av/npeak;
     }
 }
 /*---------------------------------------------------------------------------------------------------*/
-
-
-

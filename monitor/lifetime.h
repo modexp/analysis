@@ -27,6 +27,7 @@ public :
    Int_t           channel;
    Int_t           peak;
    Double_t        rate;
+   Double_t        drate;
    Double_t        e;
    Double_t        res;
    Double_t        temp;
@@ -37,6 +38,7 @@ public :
    TBranch        *b_channel;   //!
    TBranch        *b_peak;   //!
    TBranch        *b_rate;   //!
+   TBranch        *b_drate;   //!
    TBranch        *b_e;   //!
    TBranch        *b_res;   //!
    TBranch        *b_temp;   //!
@@ -110,6 +112,7 @@ void lifetime::Init(TChain *tree)
    fChain->SetBranchAddress("channel", &channel, &b_channel);
    fChain->SetBranchAddress("peak", &peak, &b_peak);
    fChain->SetBranchAddress("rate", &rate, &b_rate);
+   fChain->SetBranchAddress("drate", &drate, &b_drate);
    fChain->SetBranchAddress("e", &e, &b_e);
    fChain->SetBranchAddress("res", &res, &b_res);
    fChain->SetBranchAddress("temp", &temp, &b_temp);

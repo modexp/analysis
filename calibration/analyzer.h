@@ -11,7 +11,7 @@
 #include <vector>
 #include <iostream>
 
-#define TIME_INTERVAL 900
+#define TIME_INTERVAL 7200
 
 // Header file for the classes stored in the TTree if any.
 

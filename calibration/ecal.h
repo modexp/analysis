@@ -96,13 +96,16 @@ public :
     //
     TTree *_cal_tree;
     
+    Int_t _cal_index;
     Double_t _cal_tmin;
     Double_t _cal_tmax;
     std::vector<Double_t> _cal_c0;
     std::vector<Double_t> _cal_c1;
     std::vector<Double_t> _cal_c2;
+    std::vector<Double_t> _cal_chi2;
     
     double ccal[NUMBER_OF_CHANNELS][MAX_PARAMETERS];
+    double cal_quality[NUMBER_OF_CHANNELS];
 };
 
 #endif

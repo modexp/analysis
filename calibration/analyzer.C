@@ -71,7 +71,7 @@ Double_t fitf(Double_t *v, Double_t *par)
 /*----------------------------------------------------------------------------------------------------*/
 void analyzer::fit_spectrum(int ichannel){
     
-//  TCanvas *c2 = new TCanvas("c2","c2",600,400);
+  TCanvas *c2 = new TCanvas("c2","c2",600,400);
   cout <<"analyzer::fit_spectrum  channel = "<<ichannel<<endl;
 
   // real
@@ -147,22 +147,22 @@ void analyzer::fit_spectrum(int ichannel){
   //
   // plot the data with the fittted function
   //
-  // // RooPlot *Eframe = E.frame();
-  // // data.plotOn(Eframe);
+//  RooPlot *Eframe = E.frame();
+//  data.plotOn(Eframe);
 
   //
   // fit the pdf to the data
   //
   RooFitResult *fr = esum.fitTo(data,Extended(kTRUE),Range(fit_range[0],fit_range[1]),Save());
-  // // esum.plotOn(Eframe);
-  // // esum.plotOn(Eframe,Components(gauss1),LineColor(2),LineWidth(2));
-  // // if(ichannel == 2 || ichannel ==3 || ichannel ==4 || ichannel == 5){
-  // //   esum.plotOn(Eframe,Components(gauss2),LineColor(2),LineWidth(2));
-  // //   esum.plotOn(Eframe,Components(gauss3),LineColor(2),LineWidth(2));
-  // // }
-  // // esum.plotOn(Eframe,Components(bg),LineColor(kGreen),LineWidth(2));
+//  esum.plotOn(Eframe);
+//  esum.plotOn(Eframe,Components(gauss1),LineColor(2),LineWidth(2));
+//  if(ichannel == 2 || ichannel ==3 || ichannel ==4 || ichannel == 5){
+//     esum.plotOn(Eframe,Components(gauss2),LineColor(2),LineWidth(2));
+//     esum.plotOn(Eframe,Components(gauss3),LineColor(2),LineWidth(2));
+//  }
+//  esum.plotOn(Eframe,Components(bg),LineColor(kGreen),LineWidth(2));
 
-  // // Eframe->Draw();
+//  Eframe->Draw();
     
   //
   // process the variables to rates
@@ -172,10 +172,10 @@ void analyzer::fit_spectrum(int ichannel){
     processFitData(Norm,g2frac,mean2,sigma2,ichannel,1);
     processFitData(Norm,g3frac,mean3,sigma3,ichannel,2);
   }
-  //c2->Update();
+//  c2->Update();
     
-  //int huh;
-  //cin>>huh;
+//  int huh;
+//  cin>>huh;
   //
   //
   //
