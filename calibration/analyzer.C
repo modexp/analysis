@@ -69,137 +69,351 @@ Double_t fitf(Double_t *v, Double_t *par)
     return fitval;
 }
 /*----------------------------------------------------------------------------------------------------*/
-void analyzer::fit_spectrum(int ichannel){
+void analyzer::fit_spectrum(int ichannel, double *fit_range){
+    //
+    // RooFit based spectrum fitter
+    //
+    //
+    cout <<"analyzer::fit_spectrum  channel = "<<ichannel<<endl;
+    //
+    // identify the peaks in our specified energy range and store their peak ID.
+    //
+    int nselect = 0;
+    int peak_id[MAX_PEAKS];
+    for(int ipeak = 0; ipeak<MAX_PEAKS; ipeak++){
+        double epeak = source_energy[ichannel][ipeak];
+        if ( (epeak > fit_range[0]) && (epeak < fit_range[1])){ // yes the peak is in range
+            peak_id[nselect] = ipeak;
+            nselect++;
+        }
+    }
+    cout <<"analyzer::fit_spectrum found " <<nselect<<" peaks from "<<fit_range[0]
+         <<" keV < E < "<<fit_range[1]<<" keV"<<endl;
     
-  TCanvas *c2 = new TCanvas("c2","c2",600,400);
-  cout <<"analyzer::fit_spectrum  channel = "<<ichannel<<endl;
-
-  // real
-  RooRealVar E("E (keV)","E (keV)",emin,emax);
-
-  // the BG function from a histogram
-  string mc_file="";
-  if       (ichannel == 2 || ichannel == 3){
-      mc_file = "/user/z37/Modulation/analysis/calibration/MC_ti44_modulation.root";
-  } else if(ichannel == 4 || ichannel == 5){
-      mc_file = "/user/z37/Modulation/analysis/calibration/MC_co60_modulation.root";
-  } else if(ichannel == 6 || ichannel == 7){
-      mc_file = "/user/z37/Modulation/analysis/calibration/MC_cs137_modulation.root";
-  }
-
-  TFile *f_mc = new TFile(mc_file.c_str(),"READONLY");
-  TH1* h_bg  = (TH1*)f_mc->Get("h2");
-
-  RooDataHist mc1("mc1","mc1",RooArgList(E),h_bg);
-  f_mc->Close();
-  RooHistPdf bg("bg","bg",E,mc1,0);
-
-  // first Gauss for first photo-peak ....
-  Double_t Eval = source_energy[ichannel][0];
-  RooRealVar mean1("mean1","mean of gaussian 1",Eval,Eval-50,Eval+50);
-  RooRealVar sigma1("sigma1","width of gaussians",25,5.,50.) ;
-  RooRealVar g1frac("g1frac","fraction of gauss1",0.2,0.0,1.0) ;
-  RooGaussian gauss1("gauss1","gaussian PDF",E,mean1,sigma1) ;
-  // second Gauss....
-  Eval = source_energy[ichannel][1];
-  RooRealVar mean2("mean2","mean of gaussian 2",Eval,Eval-50,Eval+50);
-  RooRealVar sigma2("sigma2","width of gaussians",25,5.,100.) ;
-  RooRealVar g2frac("g2frac","fraction of gauss2",0.2,0.,1.0) ;
-  RooGaussian gauss2("gauss2","gaussian PDF",E,mean2,sigma2) ;
-  // third Gauss
-  Eval = source_energy[ichannel][2];
-  RooRealVar mean3("mean3","mean of gaussian 2",Eval,Eval-50,Eval+50);
-  RooRealVar sigma3("sigma3","width of gaussians",25,5.,100.) ;
-  RooRealVar g3frac("g3frac","fraction of gauss3",0.05,0.0,1.0) ;
-  RooGaussian gauss3("gauss3","gaussian PDF",E,mean3,sigma3) ;
-
-  // normalization
-  RooRealVar Norm("Norm","Normalization",1e6,0.,1e12);
-
-  // Gaussian functions for the extra photo-peaks + BG
-  double fit_range[2];
-  RooAddPdf *sum;
-  if       (ichannel == 2 || ichannel ==3){
-    // fit range
-    fit_range[0] = 400;
-    fit_range[1] = 1800;
-    // pdf
-    sum = new RooAddPdf("sum","g1+g2+g3+bg",RooArgList(gauss1,gauss2,gauss3,bg),RooArgList(g1frac,g2frac,g3frac));
-  } else if(ichannel == 4 || ichannel ==5){
-    // fit range
-    fit_range[0] = 800;
-    fit_range[1] = 2800;
-    // pdf
-    sum = new RooAddPdf("sum","g1+g2+g3+bg",RooArgList(gauss1,gauss2,gauss3,bg),RooArgList(g1frac,g2frac,g3frac));
-  } else if(ichannel == 6 || ichannel == 7){
-    // fit range
-    fit_range[0] = 400;
-    fit_range[1] = 1000;
-    // pdf
-    sum = new RooAddPdf("sum","g1+bg",RooArgList(gauss1,bg),RooArgList(g1frac));
-  }
-  E.setRange("signalRange",emin,emax);//fit_range[0],fit_range[1]);
-  RooExtendPdf esum("esum","extended pdf with Norm",*sum,Norm,"signalRange");
+    //
+    // no peaks have been found..... leave fittng routine
+    //
+    if(nselect == 0) return;
     
-  // get the data
-  RooDataHist data("data","data",RooArgList(E),(TH1*)_pk_tmp[ichannel]);
+    //
+    // spectrum is a function of the energy
+    //
+    RooRealVar E("E (keV)","E (keV)",emin,emax);
     
-  //
-  // plot the data with the fittted function
-  //
-//  RooPlot *Eframe = E.frame();
-//  data.plotOn(Eframe);
+    //
+    // the background template for each of the sources obtained from a GEANT4 simulation
+    //
+    string mc_file="";
+    if       (ichannel == 2 || ichannel == 3){
+        mc_file = "/user/z37/Modulation/analysis/calibration/MC_ti44_modulation.root";
+    } else if(ichannel == 4 || ichannel == 5){
+        mc_file = "/user/z37/Modulation/analysis/calibration/MC_co60_modulation.root";
+    } else if(ichannel == 6 || ichannel == 7){
+        mc_file = "/user/z37/Modulation/analysis/calibration/MC_cs137_modulation.root";
+    }
+    
+    TFile *f_mc = new TFile(mc_file.c_str(),"READONLY");
+    TH1* h_bg  = (TH1*)f_mc->Get("h2");
+    //
+    // construct the background pdf
+    //
+    RooDataHist mc1("mc1","mc1",RooArgList(E),h_bg);
+    f_mc->Close();
+    RooHistPdf bg("bg","bg",E,mc1,0);
+    
+    //
+    // define the Gaussians for the photo peaks
+    //
+    cout <<"analyzer::fit_spectrum Define photo peak Gaussians"<<endl;
+    std::vector<RooRealVar*> pk_mean;
+    std::vector<RooRealVar*> pk_sigma;
+    std::vector<RooRealVar*> pk_frac;
+    std::vector<RooGaussian*> pk_gaus;
 
-  //
-  // fit the pdf to the data
-  //
-  RooFitResult *fr = esum.fitTo(data,Extended(kTRUE),Range(fit_range[0],fit_range[1]),Save());
-//  esum.plotOn(Eframe);
-//  esum.plotOn(Eframe,Components(gauss1),LineColor(2),LineWidth(2));
-//  if(ichannel == 2 || ichannel ==3 || ichannel ==4 || ichannel == 5){
-//     esum.plotOn(Eframe,Components(gauss2),LineColor(2),LineWidth(2));
-//     esum.plotOn(Eframe,Components(gauss3),LineColor(2),LineWidth(2));
-//  }
-//  esum.plotOn(Eframe,Components(bg),LineColor(kGreen),LineWidth(2));
+    std::vector<RooRealVar*> pk_frac_tail;
+    std::vector<RooRealVar*> pk_sigma_tail;
+    std::vector<RooGaussian*> pk_gaus_tail;
+    
+    
+    char vname[128];
+    for (int id=0; id<nselect; id++){
+        int ipeak = peak_id[id];
+        double epeak = source_energy[ichannel][ipeak];
+        
+        sprintf(vname,"mean%i",id);
+        pk_mean.push_back(new RooRealVar(vname,vname,epeak,epeak-50,epeak+50));
+        sprintf(vname,"sigma%i",id);
+        pk_sigma.push_back(new RooRealVar(vname,vname,25,5,100));
+        sprintf(vname,"frac%i",id);
+        pk_frac.push_back(new RooRealVar(vname,vname,0.2,0.0,1.0));
+        
+        sprintf(vname,"gaus%i",id);
+        pk_gaus.push_back(new RooGaussian(vname,vname,E,*pk_mean[id],*pk_sigma[id]));
+//
+        sprintf(vname,"frac_tail%i",id);
+        pk_frac_tail.push_back(new RooRealVar(vname,vname,0.01,0.0,0.1));
+        sprintf(vname,"sigma_tail%i",id);
+        pk_sigma_tail.push_back(new RooRealVar(vname,vname,50,5,100));
+        sprintf(vname,"gaus_tail%i",id);
+        pk_gaus_tail.push_back(new RooGaussian(vname,vname,E,*pk_mean[id],*pk_sigma_tail[id]));
+        
+    }
+    cout <<"analyzer::fit_spectrum Define photo peak Gaussians ---- DONE"<<endl;
+    //
+    // normalization for the pdf will be a sperately fitted parameter
+    //
+    RooRealVar Norm("Norm","Normalization",1e6,0.,1e12);
+    
+    //
+    // compose the joined pdf for background + signal
+    //
+    
+    cout <<"analyzer::fit_spectrum Compose the combined pdf"<<endl;
+    
+    RooAddPdf *sum;
+    if (nselect==1)  sum = new RooAddPdf("sum","g1+bg",RooArgList(*pk_gaus[0],bg),RooArgList(*pk_frac[0]));
+//      if(peak_id[0] == 2) {
+//         sum = new RooAddPdf("sum","g1+g2+bg",RooArgList(*pk_gaus[0],*pk_gaus_tail[0],bg),RooArgList(*pk_frac[0],*pk_frac_tail[0]));
+//      } else {
+//         sum = new RooAddPdf("sum","g1+bg",RooArgList(*pk_gaus[0],bg),RooArgList(*pk_frac[0]));
+//      }
+//    }
+    if (nselect==2)  sum = new RooAddPdf("sum","g1+g2+bg",RooArgList(*pk_gaus[0],*pk_gaus[1],bg),RooArgList(*pk_frac[0],*pk_frac[1]));
+    if (nselect==3)  sum = new RooAddPdf("sum","g1+g2+g3+bg",RooArgList(*pk_gaus[0],*pk_gaus[1],*pk_gaus[2],bg),RooArgList(*pk_frac[0],*pk_frac[1],*pk_frac[2]));
+    
+    cout <<"analyzer::fit_spectrum Compose the combined pdf ---- DONE "<<endl;
+    
+    E.setRange("signalRange",emin,emax);//fit_range[0],fit_range[1]);
+    RooExtendPdf esum("esum","extended pdf with Norm",*sum,Norm,"signalRange");
+    
+    cout <<"analyzer::fit_spectrum Compose the combined pdf ---- extended DONE "<<endl;
+    //
+    // get the data from a TH1 root histogram
+    //
+    RooDataHist data("data","data",RooArgList(E),(TH1*)_pk_tmp[ichannel]);
+    //
+    // fit the pdf to the data
+    //
+    RooFitResult *fr = esum.fitTo(data,Extended(kTRUE),Range(fit_range[0],fit_range[1]),Save());
+    fr->Print();
+    //
+    // process the fitted variables and store in the output tree
+    //
+    for (int id=0; id<nselect; id++){
+        //
+        // covariance matrix elements for calculation of error on rate
+        //
+        processFitData(Norm,*pk_frac[id],*pk_mean[id],*pk_sigma[id],*fr, ichannel,peak_id[id]);
+    }
+    
+    //
+    // draw the fit results..... not for batch running. Set PLOT_ON_SCREEN variable to 0 in analyzer.h file
+    //
+    if(PLOT_ON_SCREEN){
+        TCanvas *c1 = new TCanvas("c1","c1",600,400);
+        //
+        // plot the data with the fittted function
+        //
+        RooPlot *Eframe = E.frame();
+        Eframe->SetTitle("");
+        Eframe->GetXaxis()->SetRangeUser(fit_range[0],fit_range[1]);
 
-//  Eframe->Draw();
-    
-  //
-  // process the variables to rates
-  //
-  processFitData(Norm,g1frac,mean1,sigma1,ichannel,0);
-  if(ichannel == 2 || ichannel ==3 || ichannel ==4 || ichannel == 5){
-    processFitData(Norm,g2frac,mean2,sigma2,ichannel,1);
-    processFitData(Norm,g3frac,mean3,sigma3,ichannel,2);
-  }
-//  c2->Update();
-    
-//  int huh;
-//  cin>>huh;
-  //
-  //
-  //
-  delete sum;
-  delete fr;
+        //
+        // find maximum data value in plot range
+        //
+        _pk_tmp[ichannel]->GetXaxis()->SetRangeUser(fit_range[0],fit_range[1]);
+        Int_t maxbin  = _pk_tmp[ichannel]->GetMaximumBin();
+        Double_t maxval  = _pk_tmp[ichannel]->GetBinContent(maxbin);
+
+        //
+        // plot the data and pdfs. use the plot range as found before
+        //
+        data.plotOn(Eframe);
+        esum.plotOn(Eframe);
+        Eframe->SetMaximum(1.2*maxval);
+        c1->SetLogy(1);
+        
+        for (int id=0; id<nselect; id++){
+            esum.plotOn(Eframe,Components(*pk_gaus[id]),LineColor(2),LineWidth(2));
+            pk_gaus[id]->paramOn(Eframe,Layout(0.55,0.88,0.85-id*0.15));
+        }
+        esum.plotOn(Eframe,Components(bg),LineColor(kGreen),LineWidth(2));
+        
+        cout << Eframe->chiSquare() <<endl;
+        Eframe->Draw();
+        
+        c1->Update();
+
+        int huh;
+        cin>>huh;
+    }
+    //
+    // cleanup
+    //
+    delete sum;
+    delete fr;
 }
-  
-void analyzer::processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealVar sig, int ichannel, int ipeak){
-  //
-  // process the fit data in order to get the rate with errors etc into the ntuple
-  //
-  Double_t E1   = E.getValV();
-  Double_t R1   = f.getValV()*N.getValV()/TIME_INTERVAL;
-  // correlations between fraction and N1 are very small (?)
-  Double_t dR1  = sqrt(pow(N.getValV()*f.getError(),2)+pow(f.getValV()*N.getError(),2))/TIME_INTERVAL;
-  Double_t res  = 2.355*sig.getValV()/E1;
-  cout <<ichannel<<" "<<ipeak<<" "<<E1<<" "<<res<<" R = "<<R1<<" +- "<<dR1<<endl;
-  addTreeEntry(E1,R1,dR1,res,ichannel,ipeak);
+
+/*----------------------------------------------------------------------------------------------------*/
+void analyzer::fit_spectrum(int ichannel){
+    //
+    // RooFit based spectrum fitter
+    //
+    //
+    cout <<"analyzer::fit_spectrum  channel = "<<ichannel<<endl;
+    
+    //
+    // spectrum is a function of the energy
+    //
+    RooRealVar E("E (keV)","E (keV)",emin,emax);
+    
+    //
+    // the background template for each of the sources obtained from a GEANT4 simulation
+    //
+    string mc_file="";
+    if       (ichannel == 2 || ichannel == 3){
+        mc_file = "/user/z37/Modulation/analysis/calibration/MC_ti44_modulation.root";
+    } else if(ichannel == 4 || ichannel == 5){
+        mc_file = "/user/z37/Modulation/analysis/calibration/MC_co60_modulation.root";
+    } else if(ichannel == 6 || ichannel == 7){
+        mc_file = "/user/z37/Modulation/analysis/calibration/MC_cs137_modulation.root";
+    }
+    
+    TFile *f_mc = new TFile(mc_file.c_str(),"READONLY");
+    TH1* h_bg  = (TH1*)f_mc->Get("h2");
+    //
+    // construct the background pdf
+    //
+    RooDataHist mc1("mc1","mc1",RooArgList(E),h_bg);
+    f_mc->Close();
+    RooHistPdf bg("bg","bg",E,mc1,0);
+    
+    //
+    // first Gauss for first photo-peak ....
+    //
+    Double_t Eval = source_energy[ichannel][0];
+    RooRealVar mean1("mean1","mean of gaussian 1",Eval,Eval-50,Eval+50);
+    RooRealVar sigma1("sigma1","width of gaussians",25,5.,50.) ;
+    RooRealVar g1frac("g1frac","fraction of gauss1",0.2,0.0,1.0) ;
+    RooGaussian gauss1("gauss1","gaussian PDF",E,mean1,sigma1) ;
+    // second Gauss....
+    Eval = source_energy[ichannel][1];
+    RooRealVar mean2("mean2","mean of gaussian 2",Eval,Eval-50,Eval+50);
+    RooRealVar sigma2("sigma2","width of gaussians",25,5.,100.) ;
+    RooRealVar g2frac("g2frac","fraction of gauss2",0.2,0.,1.0) ;
+    RooGaussian gauss2("gauss2","gaussian PDF",E,mean2,sigma2) ;
+    // third Gauss
+    Eval = source_energy[ichannel][2];
+    RooRealVar mean3("mean3","mean of gaussian 2",Eval,Eval-50,Eval+50);
+    RooRealVar sigma3("sigma3","width of gaussians",25,5.,100.) ;
+    RooRealVar g3frac("g3frac","fraction of gauss3",0.05,0.0,1.0) ;
+    RooGaussian gauss3("gauss3","gaussian PDF",E,mean3,sigma3) ;
+    
+    //
+    // normalization for the pdf will be a sperately fitted parameter
+    //
+    RooRealVar Norm("Norm","Normalization",1e6,0.,1e12);
+    
+    //
+    // compose the joined pdf for background + signal
+    //
+    double fit_range[2];
+    RooAddPdf *sum;
+    if       (ichannel == 2 || ichannel == 3 ){
+        // fit range
+        fit_range[0] = 400;
+        fit_range[1] = 1800;
+        // pdf
+        sum = new RooAddPdf("sum","g1+g2+g3+bg",RooArgList(gauss1,gauss2,gauss3,bg),RooArgList(g1frac,g2frac,g3frac));
+    } else if(ichannel == 4 || ichannel == 5 ){
+        // fit range
+        fit_range[0] = 800;
+        fit_range[1] = 2800;
+        // pdf
+        sum = new RooAddPdf("sum","g1+g2+g3+bg",RooArgList(gauss1,gauss2,gauss3,bg),RooArgList(g1frac,g2frac,g3frac));
+    } else if(ichannel == 6 || ichannel == 7 ){
+        // fit range
+        fit_range[0] = 400;
+        fit_range[1] = 1000;
+        // pdf
+        sum = new RooAddPdf("sum","g1+bg",RooArgList(gauss1,bg),RooArgList(g1frac));
+    }
+    E.setRange("signalRange",emin,emax);//fit_range[0],fit_range[1]);
+    RooExtendPdf esum("esum","extended pdf with Norm",*sum,Norm,"signalRange");
+    
+    //
+    // get the data from a TH1 root histogram
+    //
+    RooDataHist data("data","data",RooArgList(E),(TH1*)_pk_tmp[ichannel]);
+    //
+    // fit the pdf to the data
+    //
+    RooFitResult *fr = esum.fitTo(data,Extended(kTRUE),Range(fit_range[0],fit_range[1]),Save());
+    //
+    // process the variables to rates
+    //
+    processFitData(Norm,g1frac,mean1,sigma1,*fr,ichannel,0);
+    if(ichannel == 2 || ichannel ==3 || ichannel ==4 || ichannel == 5){
+        processFitData(Norm,g2frac,mean2,sigma2,*fr,ichannel,1);
+        processFitData(Norm,g3frac,mean3,sigma3,*fr,ichannel,2);
+    }
+    //
+    // cleanup
+    //
+    delete sum;
+    delete fr;
+}
+
+/*----------------------------------------------------------------------------------------------------*/
+void analyzer::processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealVar sig, RooFitResult fr, int ichannel, int ipeak){
+    //
+    // process the fit data in order to get the rate with errors etc into the ntuple
+    //
+    Double_t E1   = E.getValV();
+    Double_t Norm = N.getValV();
+    Double_t frac = f.getValV();
+    Double_t R1   = Norm*frac/TIME_INTERVAL;
+    //
+    // Get covariance matrix elements. We calculate Rate = frac*Norm / TIME_INTERVAL, so 
+    //
+    // dRate = sqrt(frac**2*cov(0,0) + 2*frac*Norm*cov(idx,0) + Norm**2*cov(idx,idx))/TIME_INTERVAL 
+    // 
+    // The idx should point to teh right element in the covariance matrix:
+    //     frac0 -> idx=1
+    //     frac1 -> idx=2
+    //     frac2 -> idx=3
+    //     etc etc
+    //
+    // Be carfull to change the order of the elements in teh covariance matrix: maybe there is a way to reference
+    // by name as well.....
+    //
+    int idx = 0;
+    string fName = f.GetName();
+//    cout <<">>"<<fName<<"<<"<<endl;
+    if        (fName == "frac0") {
+      idx = 1;
+    } else if (fName == "frac1"){
+      idx = 2;
+    } else if (fName == "frac2"){
+      idx = 3;
+    }
+//    cout <<" cov00 = "<<fr.covariance(0,0)<<" cov01 = "<<fr.covariance(idx,0)<<" cov11 = "<<fr.covariance(idx,idx)<<endl;
+    Double_t dR1 = Norm*Norm*fr.covariance(idx,idx); 
+    dR1 += 2*Norm*frac*fr.covariance(idx,0);
+    dR1 +=   frac*frac*fr.covariance(0,0);
+    dR1 = sqrt(dR1)/TIME_INTERVAL;
+    //
+    // calculate error on the rate
+    //
+    Double_t res  = 2.355*sig.getValV()/E1;
+    cout <<ichannel<<" "<<ipeak<<" "<<E1<<" "<<res<<" R = "<<R1<<" +- "<<dR1<<endl;
+    addTreeEntry(E1,R1,dR1,res,ichannel,ipeak);
 }
 
 /*----------------------------------------------------------------------------------------------------*/
 void analyzer::addTreeEntry(Double_t E, Double_t R, Double_t dR, Double_t res, Int_t ich, Int_t ipk){
     //
-    // fill the tree with the fit results. 
+    // fill the tree with the fit results.
     //
     // the slow data are processed elsewhere, but are also entering this tree:)
     //
@@ -209,7 +423,7 @@ void analyzer::addTreeEntry(Double_t E, Double_t R, Double_t dR, Double_t res, I
     _t_res    = res;
     _t_chanNum = ich;
     _t_peakNum = ipk;
-
+    
     // this should be the only place where the fill command is called
     tree->Fill();
 }
@@ -325,12 +539,28 @@ void analyzer::get_interval_data(){
     
     cout<<"analyzer::get_interval_data:: time_since_start ="<<time_since_start<<endl;
     
+    double range[2] = {0,3000};
     for(int ich=0; ich<NUMBER_OF_CHANNELS; ich++){
-        if(ich>1) {
-            //
-            // if we have a nice MC background model we use it to fit the spectrum
-            //
-            fit_spectrum(ich);
+        //
+        // if we have a nice MC background model we use it to fit the spectrum
+        // if we don't have a nice model we will do a simple fit instead
+        //
+        
+        if        (ich == 2 || ich == 3 ) {
+            range[0] = 400; range[1] = 620;
+            fit_spectrum(ich, range);
+            range[0] = 1000; range[1] = 1300;
+            fit_spectrum(ich, range);
+            range[0] = 1500; range[1] = 2000;
+            fit_spectrum(ich, range);
+        } else if (ich == 4 || ich == 5 ) {
+            range[0] = 900; range[1] = 1600;
+            fit_spectrum(ich, range);
+            range[0] = 2200; range[1] = 2800;
+            fit_spectrum(ich, range);
+        } else if (ich == 6 || ich == 7 ) {
+            range[0] = 400; range[1] = 1000;
+            fit_spectrum(ich, range);
         } else {
             //
             // if we deal with the background detectors we use a linear fit + gauss to fit the signal
@@ -343,8 +573,8 @@ void analyzer::get_interval_data(){
 /*----------------------------------------------------------------------------------------------------*/
 void analyzer::fit_spectrum_simple(int ichannel){
     //    int huh;
-//    TCanvas *c1 = new TCanvas("c1","c1",600,400);
-//    int huh;
+    //    TCanvas *c1 = new TCanvas("c1","c1",600,400);
+    //    int huh;
     //
     // find all the selected energy peaks
     //
@@ -380,7 +610,7 @@ void analyzer::fit_spectrum_simple(int ichannel){
             e_start = _pk_tmp[ichannel]->GetBinCenter(maxbin);
             
             _pk_tmp[ichannel]->GetXaxis()->SetRangeUser(0.,3000.);
- //           _pk_tmp[ichannel]->Draw();
+            //           _pk_tmp[ichannel]->Draw();
             
             //
             // fit a Gauss + background to a photopeak
@@ -417,11 +647,11 @@ void analyzer::fit_spectrum_simple(int ichannel){
             Double_t bin_width = (emax-emin)/nbin[ichannel];
             _t_rate = TMath::Sqrt(2*TMath::Pi())*sigma*peak / TIME_INTERVAL / bin_width;
             cout <<"get_interval_data:: ich ="<<ichannel<<" ipeak = "<<ipeak
-                 <<" E = "<<_t_energy<<" keV  rate = "<<_t_rate<<" Hz  resolution  = "<<_t_res<<" % "<<endl;
+            <<" E = "<<_t_energy<<" keV  rate = "<<_t_rate<<" Hz  resolution  = "<<_t_res<<" % "<<endl;
             
             // fille the output tree.....
             addTreeEntry(_t_energy,_t_rate,1.0,_t_res,ichannel,ipeak);
-//            c1->Update();
+            //            c1->Update();
             
             delete func;
         } // loop over peaks

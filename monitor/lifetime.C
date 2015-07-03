@@ -12,7 +12,7 @@
 
 const int nmax = 100000;
 
-void lifetime::Loop(int channel_sel, int peak_sel)
+void lifetime::Life(int channel_sel, int peak_sel, string type, bool save)
 {
    TCanvas *c1 = new TCanvas("c1","c1",600,400);
    if (fChain == 0) return;
@@ -42,26 +42,50 @@ void lifetime::Loop(int channel_sel, int peak_sel)
            n++; 
       }
    }
-   cout << " n = "<<n<<endl;
+
+   //
+   // make a TGraphErrors object and fit an exponential
+   //
    TGraphErrors *g1 = new TGraphErrors(n,t,R,0,dR);
-   TF1 *f1 = new TF1("myfunc","[0]*exp(-x*0.6931471805599/[1]/3600/24/365)",0.,4e6);
+   TF1 *f1 = new TF1("myfunc","[0]*exp(-x*0.6931471805599/[1]/3600/24/365)");//,0.,4e6);
    //TF1 *f1 = new TF1("myfunc","[0]*(1-x*[1])",0.,1000e6);
    f1->SetParameters(10,10);
-
-   gStyle->SetOptFit(111);
-   g1->SetMarkerStyle(24);
-//   g1->Fit("myfunc","","",300e3, 3000e6);
    g1->Fit("myfunc");
-   g1->Draw("AP");
 
+   TH1F *_pull = new TH1F("pull","pull",50,-5,5);
+   //
+   // plot the results
+   //
    char cmd[128];
-   sprintf(cmd,"Rate as a function of time. Channel = %i Photo-peak = %i",channel_sel,peak_sel);
-   g1->SetTitle(cmd);
-   g1->GetXaxis()->SetTitle("time (sec)");
-   g1->GetYaxis()->SetTitle("rate (Hz)");
+   gStyle->SetOptFit(111);
+   if(type == "life"){
+     g1->SetMarkerStyle(24);
+     g1->Draw("AP");
 
+     sprintf(cmd,"Rate as a function of time. Channel = %i Photo-peak = %i",channel_sel,peak_sel);
+     g1->SetTitle(cmd);
+     g1->GetXaxis()->SetTitle("time (sec)");
+     g1->GetYaxis()->SetTitle("rate (Hz)");
 
-   sprintf(cmd,"t12_ch%i_pk%i.png",channel_sel,peak_sel);
-   c1->Print(cmd);
+   } else if (type == "pull"){
+     double res;
+     for(int i=0; i<n; i++){
+       res = (R[i] - f1->Eval(t[i]) )/dR[i];
+       _pull->Fill(res);
+     }
+     sprintf(cmd,"Pull distribution. Channel = %i Photo-peak = %i",channel_sel,peak_sel);
+     _pull->SetTitle(cmd);
+     _pull->GetXaxis()->SetTitle("pull");
+     _pull->SetLineColor(4);
+     _pull->SetMarkerColor(4);
+     _pull->SetMarkerStyle(20);
+     _pull->Fit("gaus");
+     _pull->Draw("pe");
+   }
+
+   if(save){
+     sprintf(cmd,"t12_ch%i_pk%i.png",channel_sel,peak_sel);
+     c1->Print(cmd);
+   }
   
 }

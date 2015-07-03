@@ -12,6 +12,7 @@
 #include <iostream>
 
 #define TIME_INTERVAL 7200
+#define PLOT_ON_SCREEN 0
 
 // Header file for the classes stored in the TTree if any.
 
@@ -83,8 +84,9 @@ class analyzer {
     void write_histograms();
     void fit_spectrum(int ichannel);
     void fit_spectrum_simple(int ichannel);
+    void fit_spectrum(int ichannel, double *fit_range);
     void addTreeEntry(Double_t E, Double_t R, Double_t dR, Double_t res, Int_t ich, Int_t ipk);
-    void processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealVar sig, int ichannel, int ipeak);
+    void processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealVar sig, RooFitResult fr, int ichannel, int ipeak);
     
     // histograms
     TFile *_f;
