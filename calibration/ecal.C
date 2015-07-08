@@ -211,10 +211,14 @@ void ecal::ecal_continuous(){
         if(jentry%100000 == 0) cout<<"Processed "<<jentry<<" events"<<endl;
     }
     //
+    // if a run is very short we need to make a calibration anyhow on the available data
+    //
+    if(time_since_start < TIME_INTERVAL) do_calibration();
+
+    //
     // if the last bit of data dont have their own calibration, use the previous
     //
     fill_tree(_cal_tmin,9e99);
-
     
     _f->Write();
     _f->Close();

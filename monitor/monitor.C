@@ -56,7 +56,9 @@ void plot_spectrum(int ichannel){
     
 
     // get time range
-    Double_t dt = runtime->GetVal();
+    TParameter<Double_t> *rt = (TParameter<Double_t>*)gDirectory->Get("runtime");
+    Double_t dt = rt->GetVal();
+//    Double_t dt = runtime->GetVal();
     // calculate total rate
     Double_t n_entries = _e_all->GetEntries();
     Double_t rate  = n_entries / dt;
@@ -68,12 +70,12 @@ void plot_spectrum(int ichannel){
     _e_err04->Scale(1./dt);
     
     // plot title
-    sprintf(cmd,"Spectrum: channel = %i. Rate = %6.3f #\pm %6.3f kHz",ichannel,rate/1000,drate/1000);
+    sprintf(cmd,"Spectrum: channel = %i. Rate = %6.3f #\\pm %6.3f kHz",ichannel,rate/1000,drate/1000);
     _e_good->SetTitle(cmd);
     // x-axis title
     _e_good->GetXaxis()->SetTitle("E (keV)");
     // y-axis title
-    sprintf(cmd,"Rate (Hz / %i keV)",(emax - emin)/nbin);
+    sprintf(cmd,"Rate (Hz / %i keV)",(int)((emax - emin)/nbin));
     _e_good->GetYaxis()->SetTitle(cmd);
     
     // compose the legend for the plot

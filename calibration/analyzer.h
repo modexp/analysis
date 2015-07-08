@@ -2,6 +2,7 @@
 #define analyzer_h
 
 #include <RooRealVar.h>
+#include <RooFitResult.h>
 #include <TROOT.h>
 #include <TChain.h>
 #include <TFile.h>
@@ -19,7 +20,9 @@
 // Fixed size dimensions of array or collections stored in the TTree if any.
 
 class analyzer {
+
     public :
+    RooFitResult *fr;
     string fileName, analyzer_file, run;
     
     
@@ -86,8 +89,9 @@ class analyzer {
     void fit_spectrum_simple(int ichannel);
     void fit_spectrum(int ichannel, double *fit_range);
     void addTreeEntry(Double_t E, Double_t R, Double_t dR, Double_t res, Int_t ich, Int_t ipk);
-    void processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealVar sig, RooFitResult fr, int ichannel, int ipeak);
+    void processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealVar sig, int ichannel, int ipeak);
     
+    double covariance(int i, int j);
     // histograms
     TFile *_f;
     vector<TH1F*> _e_all,_e_good,_e_err1,_e_err2,_e_err4,_pk_tmp;

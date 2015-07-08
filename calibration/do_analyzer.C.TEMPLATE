@@ -1,6 +1,0 @@
-{
-//  gROOT->LoadMacro("/user/z37/Modulation/analysis/calibration/analyzer.C++");
-  gSystem->Load("/user/z37/Modulation/analysis/calibration/analyzer_C.so");
-  analyzer ana("DATA_DIR","ANA_FILE");
-  ana.Loop();
-}
