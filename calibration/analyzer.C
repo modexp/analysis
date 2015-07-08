@@ -16,6 +16,7 @@
 #include <TGraph.h>
 #include <TVector.h>
 #include <TParameter.h>
+#include <TMatrixDSym.h>
 #include <iostream>
 //#include <vector>
 //#include <numeric>
@@ -98,7 +99,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
     //
     // spectrum is a function of the energy
     //
-    RooRealVar E("E (keV)","E (keV)",emin,emax);
+    RooRealVar E("E","E (keV)",emin,emax);
     
     //
     // the background template for each of the sources obtained from a GEANT4 simulation
@@ -194,7 +195,8 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
     //
     // fit the pdf to the data
     //
-    RooFitResult *fr = esum.fitTo(data,Extended(kTRUE),Range(fit_range[0],fit_range[1]),Save());
+    //RooFitResult *fr = esum.fitTo(data,Extended(kTRUE),Range(fit_range[0],fit_range[1]),Save());
+    fr = esum.fitTo(data,Extended(kTRUE),Range(fit_range[0],fit_range[1]),Save());
     fr->Print();
     //
     // process the fitted variables and store in the output tree
@@ -203,7 +205,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         //
         // covariance matrix elements for calculation of error on rate
         //
-        processFitData(Norm,*pk_frac[id],*pk_mean[id],*pk_sigma[id],*fr, ichannel,peak_id[id]);
+        processFitData(Norm,*pk_frac[id],*pk_mean[id],*pk_sigma[id], ichannel,peak_id[id]);
     }
     
     //
@@ -348,14 +350,15 @@ void analyzer::fit_spectrum(int ichannel){
     //
     // fit the pdf to the data
     //
-    RooFitResult *fr = esum.fitTo(data,Extended(kTRUE),Range(fit_range[0],fit_range[1]),Save());
+    //RooFitResult *fr = esum.fitTo(data,Extended(kTRUE),Range(fit_range[0],fit_range[1]),Save());
+    fr = esum.fitTo(data,Extended(kTRUE),Range(fit_range[0],fit_range[1]),Save());
     //
     // process the variables to rates
     //
-    processFitData(Norm,g1frac,mean1,sigma1,*fr,ichannel,0);
+    processFitData(Norm,g1frac,mean1,sigma1,ichannel,0);
     if(ichannel == 2 || ichannel ==3 || ichannel ==4 || ichannel == 5){
-        processFitData(Norm,g2frac,mean2,sigma2,*fr,ichannel,1);
-        processFitData(Norm,g3frac,mean3,sigma3,*fr,ichannel,2);
+        processFitData(Norm,g2frac,mean2,sigma2,ichannel,1);
+        processFitData(Norm,g3frac,mean3,sigma3,ichannel,2);
     }
     //
     // cleanup
@@ -365,7 +368,7 @@ void analyzer::fit_spectrum(int ichannel){
 }
 
 /*----------------------------------------------------------------------------------------------------*/
-void analyzer::processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealVar sig, RooFitResult fr, int ichannel, int ipeak){
+void analyzer::processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealVar sig, int ichannel, int ipeak){
     //
     // process the fit data in order to get the rate with errors etc into the ntuple
     //
@@ -397,10 +400,10 @@ void analyzer::processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealV
     } else if (fName == "frac2"){
       idx = 3;
     }
-//    cout <<" cov00 = "<<fr.covariance(0,0)<<" cov01 = "<<fr.covariance(idx,0)<<" cov11 = "<<fr.covariance(idx,idx)<<endl;
-    Double_t dR1 = Norm*Norm*fr.covariance(idx,idx); 
-    dR1 += 2*Norm*frac*fr.covariance(idx,0);
-    dR1 +=   frac*frac*fr.covariance(0,0);
+//   cout <<" cov00 = "<<covariance(0,0)<<" cov01 = "<<covariance(idx,0)<<" cov11 = "<<covariance(idx,idx)<<endl;
+    Double_t dR1 = Norm*Norm*covariance(idx,idx); 
+    dR1 += 2*Norm*frac*covariance(idx,0);
+    dR1 +=   frac*frac*covariance(0,0);
     dR1 = sqrt(dR1)/TIME_INTERVAL;
     //
     // calculate error on the rate
@@ -426,6 +429,12 @@ void analyzer::addTreeEntry(Double_t E, Double_t R, Double_t dR, Double_t res, I
     
     // this should be the only place where the fill command is called
     tree->Fill();
+}
+/*----------------------------------------------------------------------------------------------------*/
+double analyzer::covariance(int i, int j){
+   TMatrixDSym cov = fr->covarianceMatrix();
+   double cc = cov[i][j];
+   return cc;
 }
 /*----------------------------------------------------------------------------------------------------*/
 void analyzer::book_histograms(){
