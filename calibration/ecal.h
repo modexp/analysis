@@ -11,15 +11,6 @@
 
 /*----------------------------------------------------------------------------*/
 
-#define CHANNEL0 0
-#define CHANNEL1 1
-#define CHANNEL2 2
-#define CHANNEL3 3
-#define CHANNEL4 4
-#define CHANNEL5 5
-#define CHANNEL6 6
-#define CHANNEL7 7
-
 #define NUMBER_OF_CHANNELS 8
 #define MAX_PEAKS 5
 #define MAX_PARAMETERS 3
@@ -27,6 +18,10 @@
 #define BEFORE_CALIBRATION 0
 #define AFTER_CALIBRATION 1
 
+//
+// CALIBRATION_MODE 0 = one calibration for full run
+// CALIBRATION_MODE 1 = one calibration every TIME_INTERVAL seconds
+//
 #define CALIBRATION_MODE 1
 #define TIME_INTERVAL 1800 
 

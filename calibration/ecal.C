@@ -12,14 +12,28 @@
 #include <stdio.h>
 
 /*---------------------------------------------------------------------------------------------------*/
+//
+// ecal.C Routine to do the energy calibration of a modulation run
+//       
+// Usage:
+//  prompt> #include "ecal.C"
+//  prompt> ecal e(<directory_with_uncalibrated_rootfiles>,<calibration_output_rootfile>)
+//  prompt> e.Loop()
+//
+// Important parameter in ecal.h: CALIBRATION_MODE 0 : one calibration for full run (not adviced)
+//                                CALIBRATION_MODE 1 : re-calibrate every TIME_INTERVAL seconds (see ecal.h)
+//
+// A.P.
+/*---------------------------------------------------------------------------------------------------*/
 // (1) You need to identify where the first peak is in the histograms of the integrals.
 // (2) Set range_low and range_high to find the range in which the peak with cal_energy should be
 const double range_low[NUMBER_OF_CHANNELS] ={0.16e-6,0.14e-6,0.05e-6,0.05e-6,0.,0.,0.,0.};
 const double range_high[NUMBER_OF_CHANNELS]={1e-6,1e-6,1e-6,1e-6,1e-6,1e-6,1e-6,1e-6};
 
+/*---------------------------------------------------------------------------------------------------*/
 float source_energy[NUMBER_OF_CHANNELS][MAX_PEAKS] =
 //
-// the energy peaks you wish to select should be in this list
+// the energy peaks you wish to select for the calibration should be in this list
 // NOTE: the first peak should be the highest in the spectrum (sub-optimal, but handy for finding)
 //
 {

@@ -61,7 +61,7 @@ lifetime::lifetime(string fname) : fChain(0)
 {
     char cmd[256];
     TChain *tree = new TChain("ana");
-    sprintf(cmd,"%s*.root",fname.c_str());
+    sprintf(cmd,"%s/*.root",fname.c_str());
     tree->Add(cmd);
    Init(tree);
 }

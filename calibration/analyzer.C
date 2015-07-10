@@ -1,4 +1,21 @@
 #define analyzer_cxx
+/*---------------------------------------------------------------------------------------------------*/
+//
+// analyzer.C Routine to analyze spectra and calculate the rate of the sources
+//
+// Usage:
+//  prompt> #include "analyzer.C"
+//  prompt> analyzer ana(<directory_with_energy_calibrated_rootfiles>,<analysis_output_rootfile>)
+//  prompt> ana.Loop()
+//
+// To inspect the fit results it is possible to plot the fit results. In analyzer.h  set:
+// #define PLOT_ON_SCREEN 1
+// 
+// To set the time interval in which a spectrum is calculated, in analyzer.h set:
+// #define TIME_INTERVAL <interval_in_seconds>
+//
+// A.P.
+/*---------------------------------------------------------------------------------------------------*/
 #include "analyzer.h"
 // RooFit include files
 #include <RooRealVar.h>
@@ -59,6 +76,10 @@ const float base_max_val = 2000;
 
 
 /*----------------------------------------------------------------------------------------------------*/
+
+//
+// Gaussian function + 2nd order polynomial for simple rate fitting
+//
 Double_t fitf(Double_t *v, Double_t *par)
 {
     Double_t arg = 0;
@@ -73,7 +94,6 @@ Double_t fitf(Double_t *v, Double_t *par)
 void analyzer::fit_spectrum(int ichannel, double *fit_range){
     //
     // RooFit based spectrum fitter
-    //
     //
     cout <<"analyzer::fit_spectrum  channel = "<<ichannel<<endl;
     //
@@ -106,11 +126,14 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
     //
     string mc_file="";
     if       (ichannel == 2 || ichannel == 3){
-        mc_file = "/user/z37/Modulation/analysis/calibration/MC_ti44_modulation.root";
+//        mc_file = "/user/z37/Modulation/analysis/calibration/MC_ti44_modulation.root";
+        mc_file = "MC_ti44_modulation.root";
     } else if(ichannel == 4 || ichannel == 5){
-        mc_file = "/user/z37/Modulation/analysis/calibration/MC_co60_modulation.root";
+//        mc_file = "/user/z37/Modulation/analysis/calibration/MC_co60_modulation.root";
+        mc_file = "MC_co60_modulation.root";
     } else if(ichannel == 6 || ichannel == 7){
-        mc_file = "/user/z37/Modulation/analysis/calibration/MC_cs137_modulation.root";
+//        mc_file = "/user/z37/Modulation/analysis/calibration/MC_cs137_modulation.root";
+        mc_file = "MC_cs137_modulation.root";
     }
     
     TFile *f_mc = new TFile(mc_file.c_str(),"READONLY");
@@ -267,7 +290,7 @@ void analyzer::fit_spectrum(int ichannel){
     //
     // spectrum is a function of the energy
     //
-    RooRealVar E("E (keV)","E (keV)",emin,emax);
+    RooRealVar E("E","E (keV)",emin,emax);
     
     //
     // the background template for each of the sources obtained from a GEANT4 simulation

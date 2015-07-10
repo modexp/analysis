@@ -32,6 +32,24 @@ float source_energy[NUMBER_OF_CHANNELS][MAX_PEAKS] =
 };
 
 /*---------------------------------------------------------------------------------------------*/
+//
+// fitspectrum.C - RooFit based spectrum fitter. This routine can fit the spectrum for a full
+//                 modulation experiment run. The same algorithm is used in the analysis/calibration/analyzer.C
+//                 routine to fit the spectra after the chosen time interval.
+//
+//                 In this routine it is easy to develop new fitting ideas.
+//
+// Arguments
+//            data_file    : name of the data file to fit
+//            mc_file      : Geant4 prediction of the background spectrum. The spectra are generated
+//                           with the modexp/modusim package from GitHub
+//            ichannel     : channel number [0..7]
+//            e0           : lowest energy for fit (keV)
+//            e1           : highest energy for fit (keV)
+//
+// A.P. 2015-07-02
+//
+/*---------------------------------------------------------------------------------------------*/
 void fitspectrum(string data_file, string mc_file, int ichannel, double e0, double e1){
     double fit_range[2];
     fit_range[0] = e0;
@@ -113,11 +131,7 @@ void fitspectrum(string data_file, string mc_file, int ichannel, double e0, doub
     for (int id=0; id<nselect; id++){
         sprintf(vname,"gaus%i",id);
         cout <<"vname >>"<<vname<<"<< pk  = "<< (pk_mean[id])->getValV()<<endl;
-        
-//        RooGaussian *gg = new RooGaussian(vname,vname,E,*pk_mean[id],*pk_sigma[id]);
         pk_gaus.push_back(new RooGaussian(vname,vname,E,*pk_mean.at(id),*pk_sigma.at(id)));
-        cout <<"dodo"<<endl;
-//        delete gg;
     }
     cout <<"analyzer::fit_spectrum Define photo peak Gaussians ---- DONE"<<endl;
     //
@@ -128,17 +142,10 @@ void fitspectrum(string data_file, string mc_file, int ichannel, double e0, doub
     //
     // compose the joined pdf for background + signal
     //
-    
     cout <<"analyzer::fit_spectrum Compose the combined pdf"<<endl;
     
     RooAddPdf *sum;
     if (nselect==1)  sum = new RooAddPdf("sum","g1+bg",RooArgList(*pk_gaus[0],bg),RooArgList(*pk_frac[0]));
-    //      if(peak_id[0] == 2) {
-    //         sum = new RooAddPdf("sum","g1+g2+bg",RooArgList(*pk_gaus[0],*pk_gaus_tail[0],bg),RooArgList(*pk_frac[0],*pk_frac_tail[0]));
-    //      } else {
-    //         sum = new RooAddPdf("sum","g1+bg",RooArgList(*pk_gaus[0],bg),RooArgList(*pk_frac[0]));
-    //      }
-    //    }
     if (nselect==2)  sum = new RooAddPdf("sum","g1+g2+bg",RooArgList(*pk_gaus[0],*pk_gaus[1],bg),RooArgList(*pk_frac[0],*pk_frac[1]));
     if (nselect==3)  sum = new RooAddPdf("sum","g1+g2+g3+bg",RooArgList(*pk_gaus[0],*pk_gaus[1],*pk_gaus[2],bg),RooArgList(*pk_frac[0],*pk_frac[1],*pk_frac[2]));
     

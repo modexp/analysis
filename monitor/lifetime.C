@@ -12,6 +12,25 @@
 
 const int nmax = 100000;
 
+/*----------------------------------------------------------------------------------------------------*/
+//
+// Fit the half-life to the tree data produced by the analyzer.C code. 
+//
+// Usage from the ROOT6 command line
+//
+// prompt> #include<lifetime.C>
+// prompt> lifetime l(<directory_with_ANA_files>)
+// prompt> l.Life(<channel>, <peak>, <type>, <save>)
+//
+// <channel> : [0..7]
+// <peak>    : [0..2] peak identifier in the spectrum. at the moment [0] for BG, [0..2] for 44Ti & 60Co, [0] for 137Cs
+// <type>    : what to plot : "life" = rate vs time wit exponential fit
+//                            "pull" = (data-fit)/fit_error
+// <save>    : to file or not?
+//
+// A.P.
+//
+/*----------------------------------------------------------------------------------------------------*/
 void lifetime::Life(int channel_sel, int peak_sel, string type, bool save)
 {
    TCanvas *c1 = new TCanvas("c1","c1",600,400);
@@ -59,6 +78,9 @@ void lifetime::Life(int channel_sel, int peak_sel, string type, bool save)
    char cmd[128];
    gStyle->SetOptFit(111);
    if(type == "life"){
+     //
+     // plot rate vs time and fitted exponential
+     //
      g1->SetMarkerStyle(24);
      g1->Draw("AP");
 
@@ -68,6 +90,9 @@ void lifetime::Life(int channel_sel, int peak_sel, string type, bool save)
      g1->GetYaxis()->SetTitle("rate (Hz)");
 
    } else if (type == "pull"){
+     //
+     // plot pull distribution
+     //
      double res;
      for(int i=0; i<n; i++){
        res = (R[i] - f1->Eval(t[i]) )/dR[i];
