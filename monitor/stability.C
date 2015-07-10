@@ -3,6 +3,17 @@
 #include <vector>
 #endif
 
+//
+// Plot rate, energy, resolution as a function of time.
+//
+// Input: rootfile  - input ANA rootfile(s). Wild cards work if you wish to analyze a long chain of runs!
+//        var       - "e", "rate","res"
+//        type      - "abs", "rel"
+//        save_plot - save plot to .pdf file (or other format)
+//
+// A.P. Colijn
+//
+
 #define NUMBER_OF_CHANNELS 8
 #define MAX_PEAKS 5
 
@@ -154,16 +165,7 @@ void initVariable(string var){
 // MAIN ROUTINE
 //
 void stability(string rootfile, string var, string type, bool save_plot){
-    //
-    // Plot rate, energy, resolution as a function of time.
-    //
-    // Input: rootfile  - input root filename
-    //        var       - "e", "rate","res"
-    //        type      - "abs", "rel"
-    //        save_plot - save plot to .pdf file (or other format)
-    //
-    // A.P. Colijn
-    //
+    // documentation on top....
     char hname[128],cmd[128],cut[128];
     cout << "chain_ana:: plotting routine"<<endl;
 

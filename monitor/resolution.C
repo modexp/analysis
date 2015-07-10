@@ -3,6 +3,15 @@
 #include <vector>
 #endif
 
+//
+// Plot resolution as a function of energy
+//
+// Input: rootfile  - input ANA root filename(s). Wild cards work to analyze more than one run at once
+//        save_plot - save plot to .pdf file (or other format)
+//
+// A.P. Colijn
+//
+
 #define NUMBER_OF_CHANNELS 8
 #define MAX_PEAKS 5
 
