@@ -15,7 +15,7 @@
 #define NUMBER_OF_CHANNELS 8
 #define MAX_PEAKS 5
 
-TChain *run = new TChain("ana");
+//TChain *run = new TChain("ana");
 TProfile *_hld;
 TLegend *_leg;
 
@@ -91,13 +91,14 @@ void initHistogram(string var, string type){
     
 }
 /*-------------------------------------------------------------------------------*/
-void initTree(string rootfile){
+TChain * initTree(string rootfile){
     //
     // (i) init tree
     // (ii) get time range
     //
     char cmd[128];
     // add files to the chain .....
+    TChain *run = new TChain("ana");
     sprintf(cmd,"%s*.root",rootfile.c_str());
     run->Add(cmd);
     
@@ -112,14 +113,18 @@ void initTree(string rootfile){
         TFile f(chEl->GetTitle());
         cout << f.GetName() <<endl;
         
+        TParameter<Double_t> *t0      = (TParameter<Double_t>*)gDirectory->Get("t0");
+        TParameter<Double_t> *runtime = (TParameter<Double_t>*)gDirectory->Get("runtime");
         if(t0->GetVal()<tmin) tmin = t0->GetVal();
         if(t0->GetVal()+runtime->GetVal()>tmax) tmax = t0->GetVal()+runtime->GetVal();
+    cout <<"tmin = "<<tmin<<" tmax = "<<tmax<<endl;
         
         f.Close();
     }
+    return run;
 }
 /*-------------------------------------------------------------------------------*/
-void initVariable(string var){
+void initVariable(string var, TChain *run){
     char cmd[128];
     
     sprintf(cmd,"%s",var.c_str());
@@ -154,7 +159,7 @@ void resolution(string rootfile, bool save_plot){
     // (i) initialize the chain of trees
     // (ii) retrieve the time range
     //
-    initTree(rootfile);
+    TChain *run = initTree(rootfile);
     
     //
     // initialize the histogram on which all graphs will be drawn
@@ -165,7 +170,7 @@ void resolution(string rootfile, bool save_plot){
     // get the values at t=0 for the variable you want to plot (needed
     // if you want to plot the relative value of a variable
     //
-//    initVariable("xxx");
+  //  initVariable("xxx");
 
     sprintf(cmd,"res:e>>hld");
         
@@ -190,7 +195,7 @@ void resolution(string rootfile, bool save_plot){
     if(save_plot){
         string figname = "plots/res_vs_e.pdf";
         c1->Print(figname.c_str());
-        string figname = "plots/res_vs_e.png";
+        figname = "plots/res_vs_e.png";
         c1->Print(figname.c_str());
     }
     return;
