@@ -53,7 +53,8 @@ void lifetime::Life(int channel_sel, int peak_sel, string type, bool save)
       // if (Cut(ientry) < 0) continue;
       if(channel == channel_sel && peak == peak_sel ){
 
-           t[n] = t0+time-tstart;
+           //t[n] = t0+time-tstart;
+           t[n] = t0+time;
            R[n] = rate;
            dR[n] = drate;//sqrt(rate*900)/900;
          
@@ -66,16 +67,23 @@ void lifetime::Life(int channel_sel, int peak_sel, string type, bool save)
    // make a TGraphErrors object and fit an exponential
    //
    TGraphErrors *g1 = new TGraphErrors(n,t,R,0,dR);
-   TF1 *f1 = new TF1("myfunc","[0]*exp(-x*0.6931471805599/[1]/3600/24/365)",0.5e6,4e6);
-//   TF1 *f1 = new TF1("myfunc","[0]*(1-x*0.6931471805599/[1]/3600/24/365)",0.,1000e6);
-   f1->SetParameters(10,10);
+   TGraphErrors *g2 = new TGraphErrors(n,t,R,0,dR);
+   
+   char cmd[128];
+   sprintf(cmd,"[0]*exp(-(x-%f)*0.6931471805599/[1]/3600/24/365)",t[0]);
+   cout <<"cmd = "<<cmd<<endl;
+//   TF1 *f1 = new TF1("myfunc","[0]*exp(-x*0.6931471805599/[1]/3600/24/365)",0.0e6,10e6);
+   TF1 *f1 = new TF1("myfunc",cmd,0.0e6,10e6);
+   TF1 *f2 = new TF1("myfunc2","[0]*(1-x*0.6931471805599/[1]/3600/24/365)",0.,1000e6);
+   f1->SetParameters(R[0],10);
+//   g1->Fit("myfunc","","",4.8e6,10e6);
    g1->Fit("myfunc");
+   g2->Fit("myfunc2");
 
    TH1F *_pull = new TH1F("pull","pull",50,-5,5);
    //
    // plot the results
    //
-   char cmd[128];
    gStyle->SetOptFit(111);
    if(type == "life"){
      //
@@ -83,10 +91,19 @@ void lifetime::Life(int channel_sel, int peak_sel, string type, bool save)
      //
      g1->SetMarkerStyle(24);
      g1->Draw("AP");
+     g1->GetXaxis()->SetTimeFormat("%d/%m");
+     g1->GetXaxis()->SetTimeDisplay(1);
+     g1->GetXaxis()->SetTitle("time");
+
+     TF1 *hh = g2->GetFunction("myfunc2");
+     hh->SetLineColor(4);
+     hh->SetLineStyle(2);
+     hh->SetLineWidth(1);
+     hh->Draw("same");
 
      sprintf(cmd,"Rate as a function of time. Channel = %i Photo-peak = %i",channel_sel,peak_sel);
      g1->SetTitle(cmd);
-     g1->GetXaxis()->SetTitle("time (sec)");
+     g1->GetXaxis()->SetTitle("time");
      g1->GetYaxis()->SetTitle("rate (Hz)");
 
    } else if (type == "pull"){

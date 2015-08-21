@@ -87,7 +87,9 @@ void initHistogram(string var, string type){
     sprintf(hname,"%s",var.c_str());
     
     _hld->SetTitle(hname);
-    _hld->GetXaxis()->SetTitle("time (sec)");
+    _hld->GetXaxis()->SetTimeFormat("%d/%m");
+    _hld->GetXaxis()->SetTimeDisplay(1);
+    _hld->GetXaxis()->SetTitle("time");
     _hld->GetYaxis()->SetRangeUser(0.,300);
     _hld->Draw();
     if(type == "rel") {
@@ -138,6 +140,8 @@ void initTree(string rootfile){
         TFile f(chEl->GetTitle());
         cout << f.GetName() <<endl;
         
+        TParameter<Double_t> *t0      = (TParameter<Double_t>*)gDirectory->Get("t0");
+        TParameter<Double_t> *runtime = (TParameter<Double_t>*)gDirectory->Get("runtime");
         if(t0->GetVal()<tmin) tmin = t0->GetVal();
         if(t0->GetVal()+runtime->GetVal()>tmax) tmax = t0->GetVal()+runtime->GetVal();
         
@@ -221,7 +225,7 @@ void stability(string rootfile, string var, string type, bool save_plot){
     if(save_plot){
         string figname = "plots/"+var+"_"+type+".pdf";
         c1->Print(figname.c_str());
-        string figname = "plots/"+var+"_"+type+".png";
+        figname = "plots/"+var+"_"+type+".png";
         c1->Print(figname.c_str());
     }
     return;
