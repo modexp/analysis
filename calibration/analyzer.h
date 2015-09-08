@@ -12,8 +12,22 @@
 #include <vector>
 #include <iostream>
 
+/*----------------------------------------------------------------------------*/
+
 #define TIME_INTERVAL 7200
 #define PLOT_ON_SCREEN 0
+
+/*----------------------------------------------------------------------------*/
+
+#define NUMBER_OF_SOURCES 6
+#define BACKGROUND 0
+#define TI44       1
+#define CO60       2
+#define CS137      3
+#define MN54       4
+#define K40        5
+
+/*----------------------------------------------------------------------------*/
 
 // Header file for the classes stored in the TTree if any.
 
@@ -90,6 +104,7 @@ class analyzer {
     void fit_spectrum(int ichannel, double *fit_range);
     void addTreeEntry(Double_t E, Double_t R, Double_t dR, Double_t res, Int_t ich, Int_t ipk);
     void processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealVar sig, int ichannel, int ipeak);
+    void get_source_id();
     
     double covariance(int i, int j);
     // histograms
@@ -123,6 +138,10 @@ class analyzer {
     
     // event counter in interval
     Int_t n_interval;
+
+    // which source is a which channel?
+    Int_t source_id[NUMBER_OF_CHANNELS];
+
 };
 
 #endif

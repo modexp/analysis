@@ -47,21 +47,22 @@
 
 using namespace RooFit;
 #define MAX_PEAKS 5
-float source_energy[NUMBER_OF_CHANNELS][MAX_PEAKS] =
+
+/*---------------------------------------------------------------------------------------------------*/
+float source_energy[NUMBER_OF_SOURCES][MAX_PEAKS] =
 //
-// the energy peaks you wish to select should be in this list
-// NOTE: the first peak should be the highest in the spectrum (sub-optimal, but handy for finding)
+// the energy peaks you wish to select for the analysis should be in this list
 //
 {
-    {1460.,-1,-1,-1,-1}, // channel0: no source
-    {1460.,-1,-1,-1,-1}, // channel1: no source
-    {511.,1157.020,511.+1157.020,-1,-1}, // channel2: 44Ti
-    {511.,1157.020,511.+1157.020,-1,-1}, // channel3: 44Ti
-    {1173.2,1332.5,1173.2+1332.5,-1,-1}, // channel4: 60Co
-    {1173.2,1332.5,1173.2+1332.5,-1,-1}, // channel5: 60Co
-    {662.,-1,-1,-1,-1}, // channel6: 137Cs
-    {662.,-1,-1,-1,-1}  // channel7: 137Cs
+    {1460.,-1,-1,-1,-1},                 // ID0: Background
+    {511.,1157.020,511.+1157.020,-1,-1}, // ID1: Ti44
+    {1173.2,1332.5,1173.2+1332.5,-1,-1}, // ID2: Co60
+    {661.7,-1,-1,-1,-1},                 // ID3: CS137
+    {-1,-1,-1,-1,-1},                    // ID4: MN54
+    {1460.,-1,-1,-1,-1}                  // ID5: K40
 };
+
+/*---------------------------------------------------------------------------------------------------*/
 
 //
 // ranges for plotting
@@ -96,13 +97,17 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
     // RooFit based spectrum fitter
     //
     cout <<"analyzer::fit_spectrum  channel = "<<ichannel<<endl;
+    
+    // get the source ID
+    int id = source_id[ichannel];
+    
     //
     // identify the peaks in our specified energy range and store their peak ID.
     //
     int nselect = 0;
     int peak_id[MAX_PEAKS];
     for(int ipeak = 0; ipeak<MAX_PEAKS; ipeak++){
-        double epeak = source_energy[ichannel][ipeak];
+        double epeak = source_energy[id][ipeak];
         if ( (epeak > fit_range[0]) && (epeak < fit_range[1])){ // yes the peak is in range
             peak_id[nselect] = ipeak;
             nselect++;
@@ -125,15 +130,16 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
     // the background template for each of the sources obtained from a GEANT4 simulation
     //
     string mc_file="";
-    if       (ichannel == 2 || ichannel == 3){
-//        mc_file = "/user/z37/Modulation/analysis/calibration/MC_ti44_modulation.root";
+    if       (id == TI44){
         mc_file = "MC_ti44_modulation.root";
-    } else if(ichannel == 4 || ichannel == 5){
-//        mc_file = "/user/z37/Modulation/analysis/calibration/MC_co60_modulation.root";
+    } else if(id == CO60){
         mc_file = "MC_co60_modulation.root";
-    } else if(ichannel == 6 || ichannel == 7){
-//        mc_file = "/user/z37/Modulation/analysis/calibration/MC_cs137_modulation.root";
+    } else if(id == CS137){
         mc_file = "MC_cs137_modulation.root";
+    } else if(id == MN54){
+        mc_file = "MC_mn54_modulation.root";
+    } else if(id == K40){
+        mc_file = "MC_k40_modulation.root";
     }
     
     TFile *f_mc = new TFile(mc_file.c_str(),"READONLY");
@@ -162,7 +168,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
     char vname[128];
     for (int id=0; id<nselect; id++){
         int ipeak = peak_id[id];
-        double epeak = source_energy[ichannel][ipeak];
+        double epeak = source_energy[id][ipeak];
         
         sprintf(vname,"mean%i",id);
         pk_mean.push_back(new RooRealVar(vname,vname,epeak,epeak-50,epeak+50));
@@ -287,6 +293,9 @@ void analyzer::fit_spectrum(int ichannel){
     //
     cout <<"analyzer::fit_spectrum  channel = "<<ichannel<<endl;
     
+    // get the souce id
+    int id = source_id[ichannel];
+    
     //
     // spectrum is a function of the energy
     //
@@ -296,12 +305,16 @@ void analyzer::fit_spectrum(int ichannel){
     // the background template for each of the sources obtained from a GEANT4 simulation
     //
     string mc_file="";
-    if       (ichannel == 2 || ichannel == 3){
+    if       (id == TI44){
         mc_file = "/user/z37/Modulation/analysis/calibration/MC_ti44_modulation.root";
-    } else if(ichannel == 4 || ichannel == 5){
+    } else if(id == CO60){
         mc_file = "/user/z37/Modulation/analysis/calibration/MC_co60_modulation.root";
-    } else if(ichannel == 6 || ichannel == 7){
+    } else if(id == CS137){
         mc_file = "/user/z37/Modulation/analysis/calibration/MC_cs137_modulation.root";
+    } else if(id == MN54){
+        mc_file = "/user/z37/Modulation/analysis/calibration/MC_mn54_modulation.root";
+    } else if(id == K40){
+        mc_file = "/user/z37/Modulation/analysis/calibration/MC_k40_modulation.root";
     }
     
     TFile *f_mc = new TFile(mc_file.c_str(),"READONLY");
@@ -316,19 +329,19 @@ void analyzer::fit_spectrum(int ichannel){
     //
     // first Gauss for first photo-peak ....
     //
-    Double_t Eval = source_energy[ichannel][0];
+    Double_t Eval = source_energy[id][0];
     RooRealVar mean1("mean1","mean of gaussian 1",Eval,Eval-50,Eval+50);
     RooRealVar sigma1("sigma1","width of gaussians",25,5.,50.) ;
     RooRealVar g1frac("g1frac","fraction of gauss1",0.2,0.0,1.0) ;
     RooGaussian gauss1("gauss1","gaussian PDF",E,mean1,sigma1) ;
     // second Gauss....
-    Eval = source_energy[ichannel][1];
+    Eval = source_energy[id][1];
     RooRealVar mean2("mean2","mean of gaussian 2",Eval,Eval-50,Eval+50);
     RooRealVar sigma2("sigma2","width of gaussians",25,5.,100.) ;
     RooRealVar g2frac("g2frac","fraction of gauss2",0.2,0.,1.0) ;
     RooGaussian gauss2("gauss2","gaussian PDF",E,mean2,sigma2) ;
     // third Gauss
-    Eval = source_energy[ichannel][2];
+    Eval = source_energy[id][2];
     RooRealVar mean3("mean3","mean of gaussian 2",Eval,Eval-50,Eval+50);
     RooRealVar sigma3("sigma3","width of gaussians",25,5.,100.) ;
     RooRealVar g3frac("g3frac","fraction of gauss3",0.05,0.0,1.0) ;
@@ -578,20 +591,28 @@ void analyzer::get_interval_data(){
         // if we don't have a nice model we will do a simple fit instead
         //
         
-        if        (ich == 2 || ich == 3 ) {
+        // which is the source?
+        int id = source_id[ich];
+        if        (id == TI44) {
             range[0] = 400; range[1] = 620;
             fit_spectrum(ich, range);
             range[0] = 1000; range[1] = 1300;
             fit_spectrum(ich, range);
             range[0] = 1500; range[1] = 2000;
             fit_spectrum(ich, range);
-        } else if (ich == 4 || ich == 5 ) {
+        } else if (id == CO60 ) {
             range[0] = 900; range[1] = 1600;
             fit_spectrum(ich, range);
             range[0] = 2200; range[1] = 2800;
             fit_spectrum(ich, range);
-        } else if (ich == 6 || ich == 7 ) {
+        } else if (id == CS137 ) {
             range[0] = 400; range[1] = 1000;
+            fit_spectrum(ich, range);
+        } else if (id == MN54) {
+            range[0] = 0; range[1] = 2000;
+            fit_spectrum(ich, range);
+        } else if (id == K40) {
+            range[0] = 1300; range[1] = 1600;
             fit_spectrum(ich, range);
         } else {
             //
@@ -599,6 +620,7 @@ void analyzer::get_interval_data(){
             //
             fit_spectrum_simple(ich);
         }
+        
         _pk_tmp[ich]->Reset(); // reset the histogram
     } // loop over channels
 }
@@ -607,6 +629,10 @@ void analyzer::fit_spectrum_simple(int ichannel){
     //    int huh;
     //    TCanvas *c1 = new TCanvas("c1","c1",600,400);
     //    int huh;
+    
+    // source id
+    int id = source_id[ichannel];
+    
     //
     // find all the selected energy peaks
     //
@@ -614,7 +640,7 @@ void analyzer::fit_spectrum_simple(int ichannel){
     double   maxval;
     Double_t e_start, e0, demin, demax;
     for (int ipeak=0; ipeak<MAX_PEAKS; ipeak++){
-        if(source_energy[ichannel][ipeak] >0){
+        if(source_energy[id][ipeak] >0){
             //
             // find the fit starting values
             //
@@ -627,12 +653,12 @@ void analyzer::fit_spectrum_simple(int ichannel){
             
             if (ipeak != 0 ) {
                 // get the position where the peak should be... according to the first fit
-                e_start = e0*source_energy[ichannel][ipeak] / source_energy[ichannel][0];
+                e_start = e0*source_energy[id][ipeak] / source_energy[id][0];
                 _pk_tmp[ichannel]->GetXaxis()->SetRangeUser(e_start-100,e_start+100);
             } else {
                 // special care for channel 0 & channel 1: these tend to have a high background at low energy!
                 if (ichannel == 0 || ichannel ==1){
-                    e_start = source_energy[ichannel][0];
+                    e_start = source_energy[id][0];
                     _pk_tmp[ichannel]->GetXaxis()->SetRangeUser(e_start-100,e_start+100);
                 }
             }
@@ -772,14 +798,56 @@ void analyzer::calculate_interval_data(){
         _t_humid /= n_interval;
     }
 }
+/*---------------------------------------------------------------------------------------------------*/
+void ecal::get_source_id()
+{
+    cout <<"analyzer::get_source_id"<<endl;
+    // get the name of the first file in the data chain
+    TFile * _f_tmp = fChain->GetFile();
+    // retrieve the source information
+    _f_tmp->cd("info/source");
+    
+    char channel_name[100];
+    TNamed *sourceName;
+    for(int ichannel=0; ichannel<NUMBER_OF_CHANNELS; ichannel++){
+        sprintf(channel_name,"channel_%i",ichannel);
+        gDirectory->GetObject(channel_name,sourceName);
+        string source = sourceName->GetTitle();
+        
+        cout <<"ecal::get_source_id  channel = "<<ichannel<<" source = "<<source<<endl;
+        if(source == "Background"){
+            source_id[ichannel] = BACKGROUND;
+        } else if ( source == "Ti-44"){
+            source_id[ichannel] = TI44;
+        } else if ( source == "Co-60"){
+            source_id[ichannel] = CO60;
+        } else if ( source == "Cs-137"){
+            source_id[ichannel] = CS137;
+        } else if ( source == "Mn-54"){
+            source_id[ichannel] = MN54;
+        } else if ( source == "K-40"){
+            source_id[ichannel] = K40;
+        } else {
+            cout <<"ecal::get_source_id() Unidentified source ..... TERMINATE"<<endl;
+            exit(-1);
+        }
+    }
+    cout <<"analyzer::get_source_id ... done"<<endl;
+    
+}
 /*----------------------------------------------------------------------------------------------------*/
 //
 // MAIN:: Loop routine
 //
 void analyzer::Loop()
 {
-    // energy calibration for modulation detectors
     if (fChain == 0) return;
+
+    //
+    // look in the first data file of the chain to see what sources are present
+    //
+    get_source_id();
+    
     
     Long64_t nentries = fChain->GetEntriesFast();
     //
