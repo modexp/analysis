@@ -11,6 +11,16 @@
 
 /*----------------------------------------------------------------------------*/
 
+#define NUMBER_OF_SOURCES 6
+#define BACKGROUND 0
+#define TI44       1
+#define CO60       2
+#define CS137      3
+#define MN54       4
+#define K40        5
+
+/*----------------------------------------------------------------------------*/
+
 #define NUMBER_OF_CHANNELS 8
 #define MAX_PEAKS 5
 #define MAX_PARAMETERS 3
@@ -75,6 +85,7 @@ public :
     void do_calibration();
     void reset_histograms();
     void fill_tree(Double_t t0, Double_t t1);
+    void get_source_id();
     
     
     TFile *_f;
@@ -101,6 +112,9 @@ public :
     
     double ccal[NUMBER_OF_CHANNELS][MAX_PARAMETERS];
     double cal_quality[NUMBER_OF_CHANNELS];
+    
+    Int_t source_id[NUMBER_OF_CHANNELS];
+    
 };
 
 #endif

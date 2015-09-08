@@ -27,24 +27,22 @@
 /*---------------------------------------------------------------------------------------------------*/
 // (1) You need to identify where the first peak is in the histograms of the integrals.
 // (2) Set range_low and range_high to find the range in which the peak with cal_energy should be
+
 const double range_low[NUMBER_OF_CHANNELS] ={0.16e-6,0.14e-6,0.05e-6,0.05e-6,0.,0.,0.,0.};
 const double range_high[NUMBER_OF_CHANNELS]={1e-6,1e-6,1e-6,1e-6,1e-6,1e-6,1e-6,1e-6};
 
 /*---------------------------------------------------------------------------------------------------*/
-float source_energy[NUMBER_OF_CHANNELS][MAX_PEAKS] =
+float source_energy[NUMBER_OF_SOURCES][MAX_PEAKS] =
 //
 // the energy peaks you wish to select for the calibration should be in this list
-// NOTE: the first peak should be the highest in the spectrum (sub-optimal, but handy for finding)
 //
 {
-    {1460.,-1,-1,-1,-1}, // channel0: no source
-    {1460.,-1,-1,-1,-1}, // channel1: no source
-    {511.,1157.020,511.+1157.020,-1,-1}, // channel2: 44Ti
-    {511.,1157.020,511.+1157.020,-1,-1}, // channel3: 44Ti
-    {1173.2,1332.5,1173.2+1332.5,-1,-1}, // channel4: 60Co
-    {1173.2,1332.5,1173.2+1332.5,-1,-1}, // channel5: 60Co
-    {661.7,-1,-1,-1,-1}, // channel6: 137Cs
-    {661.7,-1,-1,-1,-1}  // channel7: 137Cs
+    {1460.,-1,-1,-1,-1},                 // ID0: Background
+    {511.,1157.020,511.+1157.020,-1,-1}, // ID1: Ti44
+    {1173.2,1332.5,1173.2+1332.5,-1,-1}, // ID2: Co60
+    {661.7,-1,-1,-1,-1},                 // ID3: CS137
+    {-1,-1,-1,-1,-1},                    // ID4: MN54
+    {1460.,-1,-1,-1,-1}                  // ID5: K40
 };
 
 /*---------------------------------------------------------------------------------------------------*/
@@ -134,8 +132,50 @@ void ecal::fill_histograms(int ilevel){
     
 }
 /*---------------------------------------------------------------------------------------------------*/
+void ecal::get_source_id()
+{
+    cout <<"ecal::get_source_id"<<endl;
+    // get the name of the first file in the data chain
+    TFile * _f_tmp = fChain->GetFile();
+    // retrieve the source information
+    _f_tmp->cd("info/source");
+    
+    char channel_name[100];
+    TNamed *sourceName;
+    for(int ichannel=0; ichannel<NUMBER_OF_CHANNELS; ichannel++){
+        sprintf(channel_name,"channel_%i",ichannel);
+        gDirectory->GetObject(channel_name,sourceName);
+        string source = sourceName->GetTitle();
+        
+        cout <<"ecal::get_source_id  channel = "<<ichannel<<" source = "<<source<<endl;
+        if(source == "Background"){
+            source_id[ichannel] = BACKGROUND;
+        } else if ( source == "Ti-44"){
+            source_id[ichannel] = TI44;
+        } else if ( source == "Co-60"){
+            source_id[ichannel] = CO60;
+        } else if ( source == "Cs-137"){
+            source_id[ichannel] = CS137;
+        } else if ( source == "Mn-54"){
+            source_id[ichannel] = MN54;
+        } else if ( source == "K-40"){
+            source_id[ichannel] = K40;
+        } else {
+            cout <<"ecal::get_source_id() Unidentified source ..... TERMINATE"<<endl;
+            exit(-1);
+        }
+    }
+    cout <<"ecal::get_source_id ... done"<<endl;
+
+}
+/*---------------------------------------------------------------------------------------------------*/
 void ecal::Loop()
 {
+    //
+    // look in the first data file of the chain to see what sources are present
+    //
+    get_source_id();
+    
     //
     // howto do the calibration....
     //
@@ -337,8 +377,11 @@ void ecal::do_calibration(){
         cout <<"CHANNEL = "<<ich<<endl;
         // find the number of peaks to calibrate on.....
         int npeak = 0;
+        // the source identifier for this channel
+        int id = source_id[ich];
+
         for (int i=0; i<MAX_PEAKS; i++){
-            if(source_energy[ich][i]>0) npeak++;
+            if(source_energy[id][i]>0) npeak++;
         }
         
         if(npeak == 0){ // no calibration possible ..... E = 1.0*integral.
@@ -367,13 +410,13 @@ void ecal::do_calibration(){
             //
             // Rough estimate of the expected resolution
             //
-            Double_t sig_expected = 1.5/sqrt(source_energy[ich][ipeak])/2.35;
+            Double_t sig_expected = 1.5/sqrt(source_energy[id][ipeak])/2.35;
             //
             // fit ranges: if you are the first peak, then we use as start value for
             // the mean the maximum bin as found above. otherwise we scale the
             // starting point from the energy peak we found before in the first fit
             //
-            if (ipeak != 0) val = Vs_peak[0]*source_energy[ich][ipeak]/source_energy[ich][0];
+            if (ipeak != 0) val = Vs_peak[0]*source_energy[id][ipeak]/source_energy[id][0];
             sig_expected = sig_expected*val; // scale resolution to uncalibrated energy
 
             vlow  = val - 5*sig_expected;//0.025e-6;
@@ -412,7 +455,7 @@ void ecal::do_calibration(){
             //
             // get the parameters
             //
-            ee[ipeak]       = source_energy[ich][ipeak];
+            ee[ipeak]       = source_energy[id][ipeak];
             dee[ipeak]      = 0.;
             Vs_peak[ipeak]  = func->GetParameter(1);
             dVs_peak[ipeak] = func->GetParError(1);
@@ -425,7 +468,7 @@ void ecal::do_calibration(){
         //
         if (npeak == 1){ // just one point... so the energy calibration is a simple proportionality
             ccal[ich][0] = 0;
-            ccal[ich][1] = source_energy[ich][0] / Vs_peak[0];
+            ccal[ich][1] = source_energy[id][0] / Vs_peak[0];
             ccal[ich][2] = 0;
         } else if(npeak > 1){ // more than one point... now we fit a straight line
             //
