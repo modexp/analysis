@@ -18,8 +18,10 @@
 #define PLOT_ON_SCREEN 0
 
 /*----------------------------------------------------------------------------*/
+#define NUMBER_OF_CHANNELS 8
 
-#define NUMBER_OF_SOURCES 6
+/*----------------------------------------------------------------------------*/
+#define NUMBER_OF_SOURCES  6
 #define BACKGROUND 0
 #define TI44       1
 #define CO60       2

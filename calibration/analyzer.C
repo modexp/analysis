@@ -41,7 +41,6 @@
 #include <TMath.h>
 #include <TF1.h>
 
-#define NUMBER_OF_CHANNELS 8
 #define INDEX_TEMPERATURE 24
 #define MAX_INDEX 400
 
