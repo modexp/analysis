@@ -798,7 +798,7 @@ void analyzer::calculate_interval_data(){
     }
 }
 /*---------------------------------------------------------------------------------------------------*/
-void ecal::get_source_id()
+void analyzer::get_source_id()
 {
     cout <<"analyzer::get_source_id"<<endl;
     // get the name of the first file in the data chain
