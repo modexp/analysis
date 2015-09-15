@@ -139,7 +139,11 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         mc_file = "MC_mn54_modulation.root";
     } else if(id == K40){
         mc_file = "MC_k40_modulation.root";
+    } else {
+        cout <<"fit_spectrum:: BAD source identifier"<<endl;
     }
+
+    cout <<"fit_spectrum:: channel = "<<ichannel<<" source_id = "<<id<<" MC template ="<<mc_file<<endl;
     
     TFile *f_mc = new TFile(mc_file.c_str(),"READONLY");
     TH1* h_bg  = (TH1*)f_mc->Get("h2");
@@ -165,26 +169,26 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
     
     
     char vname[128];
-    for (int id=0; id<nselect; id++){
-        int ipeak = peak_id[id];
+    for (int isel=0; isel<nselect; isel++){
+        int ipeak = peak_id[isel];
         double epeak = source_energy[id][ipeak];
-        
-        sprintf(vname,"mean%i",id);
+        cout <<"fit_spectrum:: ichannel = "<<ichannel <<" ipeak = "<<ipeak<<" epeak = "<<epeak<<endl; 
+        sprintf(vname,"mean%i",isel);
         pk_mean.push_back(new RooRealVar(vname,vname,epeak,epeak-50,epeak+50));
-        sprintf(vname,"sigma%i",id);
+        sprintf(vname,"sigma%i",isel);
         pk_sigma.push_back(new RooRealVar(vname,vname,25,5,100));
-        sprintf(vname,"frac%i",id);
+        sprintf(vname,"frac%i",isel);
         pk_frac.push_back(new RooRealVar(vname,vname,0.2,0.0,1.0));
         
-        sprintf(vname,"gaus%i",id);
-        pk_gaus.push_back(new RooGaussian(vname,vname,E,*pk_mean[id],*pk_sigma[id]));
+        sprintf(vname,"gaus%i",isel);
+        pk_gaus.push_back(new RooGaussian(vname,vname,E,*pk_mean[isel],*pk_sigma[isel]));
 //
-        sprintf(vname,"frac_tail%i",id);
+        sprintf(vname,"frac_tail%i",isel);
         pk_frac_tail.push_back(new RooRealVar(vname,vname,0.01,0.0,0.1));
-        sprintf(vname,"sigma_tail%i",id);
+        sprintf(vname,"sigma_tail%i",isel);
         pk_sigma_tail.push_back(new RooRealVar(vname,vname,50,5,100));
-        sprintf(vname,"gaus_tail%i",id);
-        pk_gaus_tail.push_back(new RooGaussian(vname,vname,E,*pk_mean[id],*pk_sigma_tail[id]));
+        sprintf(vname,"gaus_tail%i",isel);
+        pk_gaus_tail.push_back(new RooGaussian(vname,vname,E,*pk_mean[isel],*pk_sigma_tail[isel]));
         
     }
     cout <<"analyzer::fit_spectrum Define photo peak Gaussians ---- DONE"<<endl;
@@ -314,7 +318,11 @@ void analyzer::fit_spectrum(int ichannel){
         mc_file = "/user/z37/Modulation/analysis/calibration/MC_mn54_modulation.root";
     } else if(id == K40){
         mc_file = "/user/z37/Modulation/analysis/calibration/MC_k40_modulation.root";
+    } else {
+        cout <<"fit_spectrum:: BAD source identifier"<<endl;
     }
+
+    cout <<"fit_spectrum:: channel = "<<ichannel<<" source_id = "<<id<<" MC template ="<<mc_file<<endl;
     
     TFile *f_mc = new TFile(mc_file.c_str(),"READONLY");
     TH1* h_bg  = (TH1*)f_mc->Get("h2");
