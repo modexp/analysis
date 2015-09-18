@@ -11,7 +11,7 @@ using namespace RooFit ;
 using namespace std;
 
 const double emin = 0.;
-const double emax = 2500.;
+const double emax = 3000.;
 
 #define NUMBER_OF_CHANNELS 8
 #define MAX_PEAKS 5
