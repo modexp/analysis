@@ -14,7 +14,7 @@
 
 /*----------------------------------------------------------------------------*/
 
-#define TIME_INTERVAL 7200
+#define TIME_INTERVAL 86400
 #define PLOT_ON_SCREEN 0
 
 /*----------------------------------------------------------------------------*/
@@ -136,7 +136,7 @@ class analyzer {
     Double_t    _t_humid;
     
     // time information
-    Double_t t0,tstart,time_since_start;
+    Double_t t0,tstart,time_since_start,delta_t;
     
     // event counter in interval
     Int_t n_interval;

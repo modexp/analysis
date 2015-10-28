@@ -26,6 +26,7 @@ const int nmax = 100000;
 // <peak>    : [0..2] peak identifier in the spectrum. at the moment [0] for BG, [0..2] for 44Ti & 60Co, [0] for 137Cs
 // <type>    : what to plot : "life" = rate vs time wit exponential fit
 //                            "pull" = (data-fit)/fit_error
+//                            "res"  = (data-fit)
 // <save>    : to file or not?
 //
 // A.P.
@@ -75,6 +76,7 @@ void lifetime::Life(int channel_sel, int peak_sel, string type, bool save)
    g1->Fit("exp_life");
 
    TH1F *_pull = new TH1F("pull","pull",50,-5,5);
+   TH1F *_res  = new TH1F("res","res",50,-0.1,0.1);
    //
    // plot the results
    //
@@ -94,6 +96,23 @@ void lifetime::Life(int channel_sel, int peak_sel, string type, bool save)
      g1->GetXaxis()->SetTitle("time");
      g1->GetYaxis()->SetTitle("rate (Hz)");
 
+   } else if (type == "res"){
+     //
+     // plot residual distribution
+     //
+     double res;
+     for(int i=0; i<n; i++){
+       res = (R[i] - f1->Eval(t[i]) );
+       _res->Fill(res);
+     }
+     sprintf(cmd,"Residual distribution. Channel = %i Photo-peak = %i",channel_sel,peak_sel);
+     _res->SetTitle(cmd);
+     _res->GetXaxis()->SetTitle("residual (Hz)");
+     _res->SetLineColor(4);
+     _res->SetMarkerColor(4);
+     _res->SetMarkerStyle(20);
+     _res->Fit("gaus");
+     _res->Draw("pe1");
    } else if (type == "pull"){
      //
      // plot pull distribution

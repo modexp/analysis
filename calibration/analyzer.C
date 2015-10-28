@@ -418,11 +418,12 @@ void analyzer::processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealV
     Double_t E1   = E.getValV();
     Double_t Norm = N.getValV();
     Double_t frac = f.getValV();
-    Double_t R1   = Norm*frac/TIME_INTERVAL;
+//    Double_t R1   = Norm*frac/TIME_INTERVAL;
+    Double_t R1   = Norm*frac/delta_t;
     //
-    // Get covariance matrix elements. We calculate Rate = frac*Norm / TIME_INTERVAL, so 
+    // Get covariance matrix elements. We calculate Rate = frac*Norm / delta_t, so 
     //
-    // dRate = sqrt(frac**2*cov(0,0) + 2*frac*Norm*cov(idx,0) + Norm**2*cov(idx,idx))/TIME_INTERVAL 
+    // dRate = sqrt(frac**2*cov(0,0) + 2*frac*Norm*cov(idx,0) + Norm**2*cov(idx,idx))/delta_t 
     // 
     // The idx should point to teh right element in the covariance matrix:
     //     frac0 -> idx=1
@@ -447,7 +448,7 @@ void analyzer::processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealV
     Double_t dR1 = Norm*Norm*covariance(idx,idx); 
     dR1 += 2*Norm*frac*covariance(idx,0);
     dR1 +=   frac*frac*covariance(0,0);
-    dR1 = sqrt(dR1)/TIME_INTERVAL;
+    dR1 = sqrt(dR1)/delta_t;
     //
     // calculate error on the rate
     //
@@ -710,7 +711,7 @@ void analyzer::fit_spectrum_simple(int ichannel){
             if(_t_energy>0) _t_res = 2.355*sigma/_t_energy ;
             
             Double_t bin_width = (emax-emin)/nbin[ichannel];
-            _t_rate = TMath::Sqrt(2*TMath::Pi())*sigma*peak / TIME_INTERVAL / bin_width;
+            _t_rate = TMath::Sqrt(2*TMath::Pi())*sigma*peak / delta_t / bin_width;
             cout <<"get_interval_data:: ich ="<<ichannel<<" ipeak = "<<ipeak
             <<" E = "<<_t_energy<<" keV  rate = "<<_t_rate<<" Hz  resolution  = "<<_t_res<<" % "<<endl;
             
@@ -867,37 +868,43 @@ void analyzer::Loop()
     //
     cout<<"Start event loop.... nentries ="<<nentries<<endl;
     Long64_t nbytes = 0, nb = 0;
+    Bool_t last_event = false;
+
     for (Long64_t jentry=0; jentry<nentries;jentry++) {
         //
         // get entry from the tree
         //
         Long64_t ientry = LoadTree(jentry);
-        if (ientry < 0) break;
-        nb = fChain->GetEntry(jentry);   nbytes += nb;
-        //
-        // process the time information.
-        //
-        if (jentry == 0) {
-            tstart = time;
-            // reset all averages
-            reset_interval_data();
-        }
-        time_since_start = time - tstart;
-        if (jentry == 0) t0 = time_since_start;
+        if (ientry < 0) last_event = true;
+
+        if(!last_event){
+          nb = fChain->GetEntry(jentry);   nbytes += nb;
+          //
+          // process the time information.
+          //
+          if (jentry == 0) {
+              tstart = time;
+              // reset all averages
+              reset_interval_data();
+          }
+          time_since_start = time - tstart;
+          if (jentry == 0) t0 = time_since_start;
         
-        //
-        // fill the monitoring histograms
-        //
-        fill_histograms();
-        //
-        // add the data for the slow control average calculations
-        //
-        add_interval_data();
-        //
-        // if we exceed the maximum time interval, get all the data recorded
-        // during this time. then reset time for a new interval....
-        //
-        if(time_since_start - t0 > TIME_INTERVAL) {
+          //
+          // fill the monitoring histograms
+          //
+          fill_histograms();
+          //
+          // add the data for the slow control average calculations
+          //
+          add_interval_data();
+          //
+          // if we exceed the maximum time interval, get all the data recorded
+          // during this time. then reset time for a new interval....
+          //
+        }
+        delta_t = time_since_start - t0;
+        if((delta_t > TIME_INTERVAL) || last_event) {
             // calculate the slow control avarages
             calculate_interval_data();
             // fitting of the peaks
@@ -909,6 +916,8 @@ void analyzer::Loop()
         }
         
         if(jentry%500000 == 0) cout<<"Processed "<<jentry<<" events"<<endl;
+
+        if(last_event) break;
     }
     
     cout<<"Done event loop...."<<endl;
