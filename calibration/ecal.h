@@ -114,6 +114,7 @@ public :
     double cal_quality[NUMBER_OF_CHANNELS];
     
     Int_t source_id[NUMBER_OF_CHANNELS];
+    Bool_t channel_active[NUMBER_OF_CHANNELS];
     
 };
 

@@ -14,7 +14,7 @@
 /*---------------------------------------------------------------------------------------------------*/
 //
 // ecal.C Routine to do the energy calibration of a modulation run
-//       
+//
 // Usage:
 //  prompt> #include "ecal.C"
 //  prompt> ecal e(<directory_with_uncalibrated_rootfiles>,<calibration_output_rootfile>)
@@ -135,39 +135,61 @@ void ecal::fill_histograms(int ilevel){
 /*---------------------------------------------------------------------------------------------------*/
 void ecal::get_source_id()
 {
+    
     cout <<"ecal::get_source_id"<<endl;
+    char channel_name[100];
+    
     // get the name of the first file in the data chain
     TFile * _f_tmp = fChain->GetFile();
+    _f_tmp->cd("info/active");
+    
+    TNamed *isActive;
+    for(int ichannel=0; ichannel<NUMBER_OF_CHANNELS; ichannel++){
+        
+        sprintf(channel_name,"channel_%i",ichannel);
+        gDirectory->GetObject(channel_name,isActive);
+        string active = isActive->GetTitle();
+        if(active == "On"){
+            channel_active[ichannel] = kTRUE;
+        } else {
+            channel_active[ichannel] = kFALSE;
+        }
+        
+    }
     // retrieve the source information
     _f_tmp->cd("info/source");
     
-    char channel_name[100];
     TNamed *sourceName;
     for(int ichannel=0; ichannel<NUMBER_OF_CHANNELS; ichannel++){
+        
         sprintf(channel_name,"channel_%i",ichannel);
         gDirectory->GetObject(channel_name,sourceName);
         string source = sourceName->GetTitle();
         
-        cout <<"ecal::get_source_id  channel = "<<ichannel<<" source = "<<source<<endl;
-        if(source == "Background"){
+        if(channel_active[ichannel]){
+            cout <<"ecal::get_source_id  channel = "<<ichannel<<" source = "<<source<<endl;
+            if(source == "Background"){
+                source_id[ichannel] = BACKGROUND;
+            } else if ( source == "Ti-44"){
+                source_id[ichannel] = TI44;
+            } else if ( source == "Co-60"){
+                source_id[ichannel] = CO60;
+            } else if ( source == "Cs-137"){
+                source_id[ichannel] = CS137;
+            } else if ( source == "Mn-54"){
+                source_id[ichannel] = MN54;
+            } else if ( source == "K-40"){
+                source_id[ichannel] = K40;
+            } else {
+                cout <<"ecal::get_source_id() Unidentified source ..... TERMINATE"<<endl;
+                exit(-1);
+            }
+        } else { // if the channel is inactive, just set it to BACKGROUND (does not matter)
             source_id[ichannel] = BACKGROUND;
-        } else if ( source == "Ti-44"){
-            source_id[ichannel] = TI44;
-        } else if ( source == "Co-60"){
-            source_id[ichannel] = CO60;
-        } else if ( source == "Cs-137"){
-            source_id[ichannel] = CS137;
-        } else if ( source == "Mn-54"){
-            source_id[ichannel] = MN54;
-        } else if ( source == "K-40"){
-            source_id[ichannel] = K40;
-        } else {
-            cout <<"ecal::get_source_id() Unidentified source ..... TERMINATE"<<endl;
-            exit(-1);
         }
     }
     cout <<"ecal::get_source_id ... done"<<endl;
-
+    
 }
 /*---------------------------------------------------------------------------------------------------*/
 void ecal::Loop()
@@ -239,7 +261,7 @@ void ecal::ecal_continuous(){
         //
         // fill the histogram
         //
-        if(error == 0) _integral[channel]->Fill(integral);
+        if(error == 0 && !istestpulse) _integral[channel]->Fill(integral);
         
         if(time_since_start - t0 > TIME_INTERVAL) {
             // maximum validity time of this calibration....
@@ -269,7 +291,7 @@ void ecal::ecal_continuous(){
     // if a run is very short we need to make a calibration anyhow on the available data
     //
     if(time_since_start < TIME_INTERVAL) do_calibration();
-
+    
     //
     // if the last bit of data dont have their own calibration, use the previous
     //
@@ -341,7 +363,7 @@ void ecal::fill_tree(Double_t t0, Double_t t1){
     //
     _cal_tmin = t0;
     _cal_tmax = t1;
-
+    
     //
     // fill the tree variables (the time window variables are set earlier....
     //
@@ -349,15 +371,15 @@ void ecal::fill_tree(Double_t t0, Double_t t1){
         _cal_c0[ich] = ccal[ich][0];
         _cal_c1[ich] = ccal[ich][1];
         _cal_c2[ich] = ccal[ich][2];
-        _cal_chi2[ich] = cal_quality[ich]; 
+        _cal_chi2[ich] = cal_quality[ich];
     }
-
+    
     _cal_index++;
     //
     // write to tree
     //
     _cal_tree->Fill();
-
+    
 }
 
 /*---------------------------------------------------------------------------------------------------*/
@@ -370,137 +392,143 @@ void ecal::do_calibration(){
     //
     // AP
     //
-//    TCanvas *cv1 = new TCanvas("cv1","cv1",600,400);
-//    c1->Draw();
-//    int huh;
+    //    TCanvas *cv1 = new TCanvas("cv1","cv1",600,400);
+    //    c1->Draw();
+    //    int huh;
     char parname[100];
     for(int ich=0; ich<NUMBER_OF_CHANNELS; ich++){
-        cout <<"CHANNEL = "<<ich<<endl;
-        // find the number of peaks to calibrate on.....
-        int npeak = 0;
-        // the source identifier for this channel
-        int id = source_id[ich];
-
-        for (int i=0; i<MAX_PEAKS; i++){
-            if(source_energy[id][i]>0) npeak++;
-        }
-        
-        if(npeak == 0){ // no calibration possible ..... E = 1.0*integral.
-            ccal[ich][0] = 0;
-            ccal[ich][1] = 1;
-            ccal[ich][2] = 0;
-        }
-        
-        // STEP1: find the highest peak
-        // define the proper range for searching the calibration constant
-        _integral[ich]->GetXaxis()->SetRangeUser(range_low[ich],range_high[ich]);
-        // find the bin with maximum value in the range
-        int ibin      = _integral[ich]->GetMaximumBin();
-        double val    = _integral[ich]->GetBinCenter(ibin);
-        double maxval = _integral[ich]->GetBinContent(ibin);
-        
-        
-        Double_t ee[MAX_PEAKS];
-        Double_t dee[MAX_PEAKS];
-        Double_t Vs_peak[MAX_PEAKS];
-        Double_t dVs_peak[MAX_PEAKS];
-        Double_t chi2_fit_av=0;
-        
-        Double_t vlow,vhigh;
-        for(int ipeak = 0; ipeak<npeak; ipeak++){
-            //
-            // Rough estimate of the expected resolution
-            //
-            Double_t sig_expected = 1.5/sqrt(source_energy[id][ipeak])/2.35;
-            //
-            // fit ranges: if you are the first peak, then we use as start value for
-            // the mean the maximum bin as found above. otherwise we scale the
-            // starting point from the energy peak we found before in the first fit
-            //
-            if (ipeak != 0) val = Vs_peak[0]*source_energy[id][ipeak]/source_energy[id][0];
-            sig_expected = sig_expected*val; // scale resolution to uncalibrated energy
-
-            vlow  = val - 5*sig_expected;//0.025e-6;
-            vhigh = val + 5*sig_expected;//0.025e-6;
+        ccal[ich][0] = 0;
+        ccal[ich][1] = 1;
+        ccal[ich][2] = 0;
+        //
+        // only calibrate Active channels!
+        //
+        if(channel_active[ich]){
+            cout <<"do_calibration:: CHANNEL = "<<ich<<endl;
+            // find the number of peaks to calibrate on.....
+            int npeak = 0;
+            // the source identifier for this channel
+            int id = source_id[ich];
             
-            if(ich == 4 || ich ==5){
-                if(ipeak == 0 ) {
-                    vhigh = val+3*sig_expected;//0.015e-6;
+            for (int i=0; i<MAX_PEAKS; i++){
+                if(source_energy[id][i]>0) npeak++;
+            }
+            
+            /// if(npeak == 0){ // no calibration possible ..... E = 1.0*integral.
+            // if the calibration fails I want a simple linear realtion between integral and energy
+            /// }
+            
+            // STEP1: find the highest peak
+            // define the proper range for searching the calibration constant
+            _integral[ich]->GetXaxis()->SetRangeUser(range_low[ich],range_high[ich]);
+            // find the bin with maximum value in the range
+            int ibin      = _integral[ich]->GetMaximumBin();
+            double val    = _integral[ich]->GetBinCenter(ibin);
+            double maxval = _integral[ich]->GetBinContent(ibin);
+            
+            
+            Double_t ee[MAX_PEAKS];
+            Double_t dee[MAX_PEAKS];
+            Double_t Vs_peak[MAX_PEAKS];
+            Double_t dVs_peak[MAX_PEAKS];
+            Double_t chi2_fit_av=0;
+            
+            Double_t vlow,vhigh;
+            for(int ipeak = 0; ipeak<npeak; ipeak++){
+                //
+                // Rough estimate of the expected resolution
+                //
+                Double_t sig_expected = 1.5/sqrt(source_energy[id][ipeak])/2.35;
+                //
+                // fit ranges: if you are the first peak, then we use as start value for
+                // the mean the maximum bin as found above. otherwise we scale the
+                // starting point from the energy peak we found before in the first fit
+                //
+                if (ipeak != 0) val = Vs_peak[0]*source_energy[id][ipeak]/source_energy[id][0];
+                sig_expected = sig_expected*val; // scale resolution to uncalibrated energy
+                
+                vlow  = val - 5*sig_expected;//0.025e-6;
+                vhigh = val + 5*sig_expected;//0.025e-6;
+                
+                if(ich == 4 || ich ==5){
+                    if(ipeak == 0 ) {
+                        vhigh = val+3*sig_expected;//0.015e-6;
+                    }
+                    if(ipeak == 1 ) vlow  = val-3*sig_expected;//0.015e-6;
                 }
-                if(ipeak == 1 ) vlow  = val-3*sig_expected;//0.015e-6;
+                
+                //
+                // fit a Gauss around the desired location in the spectrum
+                //
+                
+                // starting value for the height
+                _integral[ich]->GetXaxis()->SetRangeUser(vlow,vhigh);
+                ibin   = _integral[ich]->GetMaximumBin();
+                maxval = _integral[ich]->GetBinContent(ibin);
+                _integral[ich]->GetXaxis()->SetRangeUser(0.,1.);
+                
+                
+                // do the fit
+                TF1 *func = new TF1("fit",fitf_gauss,vlow,vhigh,5);
+                func->SetParameters(maxval,val,sig_expected);
+                func->SetParNames("C","mean","sigma");
+                _integral[ich]->Fit("fit","Q","",vlow,vhigh);
+                //            if(ich==2 || ich==4){
+                //              cout << ich<<" " <<ipeak <<" chi2 = "<<func->GetChisquare() / func->GetNDF()<<endl;
+                //              _integral[ich]->Draw();
+                //              cv1->Update();
+                //              cin>>huh;
+                //            }
+                
+                //
+                // get the parameters
+                //
+                ee[ipeak]       = source_energy[id][ipeak];
+                dee[ipeak]      = 0.;
+                Vs_peak[ipeak]  = func->GetParameter(1);
+                dVs_peak[ipeak] = func->GetParError(1);
+                chi2_fit_av    += func->GetChisquare() / func->GetNDF();
             }
             
             //
-            // fit a Gauss around the desired location in the spectrum
+            // * calculate the calibration parameters.
+            // * distinct case when fit is possible (npeak > 1)and when it is not (npeak == 1).
             //
-            
-            // starting value for the height
-            _integral[ich]->GetXaxis()->SetRangeUser(vlow,vhigh);
-            ibin   = _integral[ich]->GetMaximumBin();
-            maxval = _integral[ich]->GetBinContent(ibin);
-            _integral[ich]->GetXaxis()->SetRangeUser(0.,1.);
-            
-            
-            // do the fit
-            TF1 *func = new TF1("fit",fitf_gauss,vlow,vhigh,5);
-            func->SetParameters(maxval,val,sig_expected);
-            func->SetParNames("C","mean","sigma");
-            _integral[ich]->Fit("fit","Q","",vlow,vhigh);
-//            if(ich==2 || ich==4){
-//              cout << ich<<" " <<ipeak <<" chi2 = "<<func->GetChisquare() / func->GetNDF()<<endl;
-//              _integral[ich]->Draw();
-//              cv1->Update();
-//              cin>>huh;
-//            }
-            
-            //
-            // get the parameters
-            //
-            ee[ipeak]       = source_energy[id][ipeak];
-            dee[ipeak]      = 0.;
-            Vs_peak[ipeak]  = func->GetParameter(1);
-            dVs_peak[ipeak] = func->GetParError(1);
-            chi2_fit_av    += func->GetChisquare() / func->GetNDF();
+            if (npeak == 1){ // just one point... so the energy calibration is a simple proportionality
+                ccal[ich][0] = 0;
+                ccal[ich][1] = source_energy[id][0] / Vs_peak[0];
+                ccal[ich][2] = 0;
+            } else if(npeak > 1){ // more than one point... now we fit a straight line
+                //
+                // Fit a 1st order polynomial to the integral vs energy (inverse calibration). Done
+                // like this because I have the errors on the area, and the energy points are
+                // infinitely precise - just the photo peak energy values.
+                //
+                TGraphErrors *gcal = new TGraphErrors(npeak,ee,Vs_peak,0,dVs_peak);
+                gcal->Fit("pol1");
+                TF1 *ff = gcal->GetFunction("pol1");
+                // get the parameters.... but remember I have fitted the inverse calibration here
+                // so now I need to invert as well....
+                //   integral = v0+v1*E  -> E = -v0/v1 + 1/v1 * integral
+                Double_t v0 = ff->GetParameter(0);
+                Double_t v1 = ff->GetParameter(1);
+                // construct the calibration constants
+                ccal[ich][0] = -v0/v1;
+                ccal[ich][1] = 1/v1;
+                ccal[ich][2] = 0;
+                
+                
+                // // // TEST TEST 2ND order polynomial - errors are bad...... but representative
+                ////TGraphErrors *gcal2 = new TGraphErrors(npeak,Vs_peak,ee,0,dVs_peak);
+                ////gcal2->Fit("pol2");
+                ////TF1 *gg = gcal2->GetFunction("pol2");
+                ////ccal[ich][0] = gg->GetParameter(0);
+                ////ccal[ich][1] = gg->GetParameter(1);
+                ////ccal[ich][2] = gg->GetParameter(2);
+                
+            }
+            cal_quality[ich] = chi2_fit_av/npeak;
         }
-        
-        //
-        // * calculate the calibration parameters.
-        // * distinct case when fit is possible (npeak > 1)and when it is not (npeak == 1).
-        //
-        if (npeak == 1){ // just one point... so the energy calibration is a simple proportionality
-            ccal[ich][0] = 0;
-            ccal[ich][1] = source_energy[id][0] / Vs_peak[0];
-            ccal[ich][2] = 0;
-        } else if(npeak > 1){ // more than one point... now we fit a straight line
-            //
-            // Fit a 1st order polynomial to the integral vs energy (inverse calibration). Done
-            // like this because I have the errors on the area, and the energy points are
-            // infinitely precise - just the photo peak energy values.
-            //
-            TGraphErrors *gcal = new TGraphErrors(npeak,ee,Vs_peak,0,dVs_peak);
-            gcal->Fit("pol1");
-            TF1 *ff = gcal->GetFunction("pol1");
-            // get the parameters.... but remember I have fitted the inverse calibration here
-            // so now I need to invert as well....
-            //   integral = v0+v1*E  -> E = -v0/v1 + 1/v1 * integral
-            Double_t v0 = ff->GetParameter(0);
-            Double_t v1 = ff->GetParameter(1);
-            // construct the calibration constants
-            ccal[ich][0] = -v0/v1;
-            ccal[ich][1] = 1/v1;
-            ccal[ich][2] = 0;
-           
-
-            // // // TEST TEST 2ND order polynomial - errors are bad...... but representative
-            ////TGraphErrors *gcal2 = new TGraphErrors(npeak,Vs_peak,ee,0,dVs_peak);
-            ////gcal2->Fit("pol2");
-            ////TF1 *gg = gcal2->GetFunction("pol2");
-            ////ccal[ich][0] = gg->GetParameter(0);
-            ////ccal[ich][1] = gg->GetParameter(1);
-            ////ccal[ich][2] = gg->GetParameter(2);
-
-        }
-        cal_quality[ich] = chi2_fit_av/npeak;
     }
 }
 /*---------------------------------------------------------------------------------------------------*/
