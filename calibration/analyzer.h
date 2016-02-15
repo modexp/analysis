@@ -14,7 +14,7 @@
 
 /*----------------------------------------------------------------------------*/
 
-#define TIME_INTERVAL 86400
+#define TIME_INTERVAL 3600
 #define PLOT_ON_SCREEN 0
 
 /*----------------------------------------------------------------------------*/
@@ -143,6 +143,8 @@ class analyzer {
 
     // which source is a which channel?
     Int_t source_id[NUMBER_OF_CHANNELS];
+    Bool_t channel_active[NUMBER_OF_CHANNELS];
+
 
 };
 

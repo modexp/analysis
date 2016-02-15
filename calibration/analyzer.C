@@ -10,7 +10,7 @@
 //
 // To inspect the fit results it is possible to plot the fit results. In analyzer.h  set:
 // #define PLOT_ON_SCREEN 1
-// 
+//
 // To set the time interval in which a spectrum is calculated, in analyzer.h set:
 // #define TIME_INTERVAL <interval_in_seconds>
 //
@@ -113,7 +113,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         }
     }
     cout <<"analyzer::fit_spectrum found " <<nselect<<" peaks from "<<fit_range[0]
-         <<" keV < E < "<<fit_range[1]<<" keV"<<endl;
+    <<" keV < E < "<<fit_range[1]<<" keV"<<endl;
     
     //
     // no peaks have been found..... leave fittng routine
@@ -142,7 +142,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
     } else {
         cout <<"fit_spectrum:: BAD source identifier"<<endl;
     }
-
+    
     cout <<"fit_spectrum:: channel = "<<ichannel<<" source_id = "<<id<<" MC template ="<<mc_file<<endl;
     
     TFile *f_mc = new TFile(mc_file.c_str(),"READONLY");
@@ -162,7 +162,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
     std::vector<RooRealVar*> pk_sigma;
     std::vector<RooRealVar*> pk_frac;
     std::vector<RooGaussian*> pk_gaus;
-
+    
     std::vector<RooRealVar*> pk_frac_tail;
     std::vector<RooRealVar*> pk_sigma_tail;
     std::vector<RooGaussian*> pk_gaus_tail;
@@ -172,7 +172,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
     for (int isel=0; isel<nselect; isel++){
         int ipeak = peak_id[isel];
         double epeak = source_energy[id][ipeak];
-        cout <<"fit_spectrum:: ichannel = "<<ichannel <<" ipeak = "<<ipeak<<" epeak = "<<epeak<<endl; 
+        cout <<"fit_spectrum:: ichannel = "<<ichannel <<" ipeak = "<<ipeak<<" epeak = "<<epeak<<endl;
         sprintf(vname,"mean%i",isel);
         pk_mean.push_back(new RooRealVar(vname,vname,epeak,epeak-50,epeak+50));
         sprintf(vname,"sigma%i",isel);
@@ -182,7 +182,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         
         sprintf(vname,"gaus%i",isel);
         pk_gaus.push_back(new RooGaussian(vname,vname,E,*pk_mean[isel],*pk_sigma[isel]));
-//
+        //
         sprintf(vname,"frac_tail%i",isel);
         pk_frac_tail.push_back(new RooRealVar(vname,vname,0.01,0.0,0.1));
         sprintf(vname,"sigma_tail%i",isel);
@@ -205,12 +205,12 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
     
     RooAddPdf *sum;
     if (nselect==1)  sum = new RooAddPdf("sum","g1+bg",RooArgList(*pk_gaus[0],bg),RooArgList(*pk_frac[0]));
-//      if(peak_id[0] == 2) {
-//         sum = new RooAddPdf("sum","g1+g2+bg",RooArgList(*pk_gaus[0],*pk_gaus_tail[0],bg),RooArgList(*pk_frac[0],*pk_frac_tail[0]));
-//      } else {
-//         sum = new RooAddPdf("sum","g1+bg",RooArgList(*pk_gaus[0],bg),RooArgList(*pk_frac[0]));
-//      }
-//    }
+    //      if(peak_id[0] == 2) {
+    //         sum = new RooAddPdf("sum","g1+g2+bg",RooArgList(*pk_gaus[0],*pk_gaus_tail[0],bg),RooArgList(*pk_frac[0],*pk_frac_tail[0]));
+    //      } else {
+    //         sum = new RooAddPdf("sum","g1+bg",RooArgList(*pk_gaus[0],bg),RooArgList(*pk_frac[0]));
+    //      }
+    //    }
     if (nselect==2)  sum = new RooAddPdf("sum","g1+g2+bg",RooArgList(*pk_gaus[0],*pk_gaus[1],bg),RooArgList(*pk_frac[0],*pk_frac[1]));
     if (nselect==3)  sum = new RooAddPdf("sum","g1+g2+g3+bg",RooArgList(*pk_gaus[0],*pk_gaus[1],*pk_gaus[2],bg),RooArgList(*pk_frac[0],*pk_frac[1],*pk_frac[2]));
     
@@ -251,14 +251,14 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         RooPlot *Eframe = E.frame();
         Eframe->SetTitle("");
         Eframe->GetXaxis()->SetRangeUser(fit_range[0],fit_range[1]);
-
+        
         //
         // find maximum data value in plot range
         //
         _pk_tmp[ichannel]->GetXaxis()->SetRangeUser(fit_range[0],fit_range[1]);
         Int_t maxbin  = _pk_tmp[ichannel]->GetMaximumBin();
         Double_t maxval  = _pk_tmp[ichannel]->GetBinContent(maxbin);
-
+        
         //
         // plot the data and pdfs. use the plot range as found before
         //
@@ -277,7 +277,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         Eframe->Draw();
         
         c1->Update();
-
+        
         int huh;
         cin>>huh;
     }
@@ -321,7 +321,7 @@ void analyzer::fit_spectrum(int ichannel){
     } else {
         cout <<"fit_spectrum:: BAD source identifier"<<endl;
     }
-
+    
     cout <<"fit_spectrum:: channel = "<<ichannel<<" source_id = "<<id<<" MC template ="<<mc_file<<endl;
     
     TFile *f_mc = new TFile(mc_file.c_str(),"READONLY");
@@ -418,13 +418,13 @@ void analyzer::processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealV
     Double_t E1   = E.getValV();
     Double_t Norm = N.getValV();
     Double_t frac = f.getValV();
-//    Double_t R1   = Norm*frac/TIME_INTERVAL;
+    //    Double_t R1   = Norm*frac/TIME_INTERVAL;
     Double_t R1   = Norm*frac/delta_t;
     //
-    // Get covariance matrix elements. We calculate Rate = frac*Norm / delta_t, so 
+    // Get covariance matrix elements. We calculate Rate = frac*Norm / delta_t, so
     //
-    // dRate = sqrt(frac**2*cov(0,0) + 2*frac*Norm*cov(idx,0) + Norm**2*cov(idx,idx))/delta_t 
-    // 
+    // dRate = sqrt(frac**2*cov(0,0) + 2*frac*Norm*cov(idx,0) + Norm**2*cov(idx,idx))/delta_t
+    //
     // The idx should point to teh right element in the covariance matrix:
     //     frac0 -> idx=1
     //     frac1 -> idx=2
@@ -436,16 +436,16 @@ void analyzer::processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealV
     //
     int idx = 0;
     string fName = f.GetName();
-//    cout <<">>"<<fName<<"<<"<<endl;
+    //    cout <<">>"<<fName<<"<<"<<endl;
     if        (fName == "frac0") {
-      idx = 1;
+        idx = 1;
     } else if (fName == "frac1"){
-      idx = 2;
+        idx = 2;
     } else if (fName == "frac2"){
-      idx = 3;
+        idx = 3;
     }
-//   cout <<" cov00 = "<<covariance(0,0)<<" cov01 = "<<covariance(idx,0)<<" cov11 = "<<covariance(idx,idx)<<endl;
-    Double_t dR1 = Norm*Norm*covariance(idx,idx); 
+    //   cout <<" cov00 = "<<covariance(0,0)<<" cov01 = "<<covariance(idx,0)<<" cov11 = "<<covariance(idx,idx)<<endl;
+    Double_t dR1 = Norm*Norm*covariance(idx,idx);
     dR1 += 2*Norm*frac*covariance(idx,0);
     dR1 +=   frac*frac*covariance(0,0);
     dR1 = sqrt(dR1)/delta_t;
@@ -476,9 +476,9 @@ void analyzer::addTreeEntry(Double_t E, Double_t R, Double_t dR, Double_t res, I
 }
 /*----------------------------------------------------------------------------------------------------*/
 double analyzer::covariance(int i, int j){
-   TMatrixDSym cov = fr->covarianceMatrix();
-   double cc = cov[i][j];
-   return cc;
+    TMatrixDSym cov = fr->covarianceMatrix();
+    double cc = cov[i][j];
+    return cc;
 }
 /*----------------------------------------------------------------------------------------------------*/
 void analyzer::book_histograms(){
@@ -594,41 +594,45 @@ void analyzer::get_interval_data(){
     
     double range[2] = {0,3000};
     for(int ich=0; ich<NUMBER_OF_CHANNELS; ich++){
-        //
-        // if we have a nice MC background model we use it to fit the spectrum
-        // if we don't have a nice model we will do a simple fit instead
-        //
         
-        // which is the source?
-        int id = source_id[ich];
-        if        (id == TI44) {
-            range[0] = 400; range[1] = 620;
-            fit_spectrum(ich, range);
-            range[0] = 1000; range[1] = 1300;
-            fit_spectrum(ich, range);
-            range[0] = 1500; range[1] = 2000;
-            fit_spectrum(ich, range);
-        } else if (id == CO60 ) {
-            range[0] = 900; range[1] = 1600;
-            fit_spectrum(ich, range);
-            range[0] = 2200; range[1] = 2800;
-            fit_spectrum(ich, range);
-        } else if (id == CS137 ) {
-            range[0] = 400; range[1] = 1000;
-            fit_spectrum(ich, range);
-        } else if (id == MN54) {
-            range[0] = 0; range[1] = 2000;
-            fit_spectrum(ich, range);
-        } else if (id == K40) {
-            range[0] = 1300; range[1] = 1600;
-            fit_spectrum(ich, range);
-        } else {
+        // only analyze active channels
+        if(channel_active[ich]){
+            
             //
-            // if we deal with the background detectors we use a linear fit + gauss to fit the signal
+            // if we have a nice MC background model we use it to fit the spectrum
+            // if we don't have a nice model we will do a simple fit instead
             //
-            fit_spectrum_simple(ich);
+            
+            // which is the source?
+            int id = source_id[ich];
+            if        (id == TI44) {
+                range[0] = 400; range[1] = 620;
+                fit_spectrum(ich, range);
+                range[0] = 1000; range[1] = 1300;
+                fit_spectrum(ich, range);
+                range[0] = 1500; range[1] = 2000;
+                fit_spectrum(ich, range);
+            } else if (id == CO60 ) {
+                range[0] = 900; range[1] = 1600;
+                fit_spectrum(ich, range);
+                range[0] = 2200; range[1] = 2800;
+                fit_spectrum(ich, range);
+            } else if (id == CS137 ) {
+                range[0] = 400; range[1] = 1000;
+                fit_spectrum(ich, range);
+            } else if (id == MN54) {
+                range[0] = 0; range[1] = 2000;
+                fit_spectrum(ich, range);
+            } else if (id == K40) {
+                range[0] = 1300; range[1] = 1600;
+                fit_spectrum(ich, range);
+            } else {
+                //
+                // if we deal with the background detectors we use a linear fit + gauss to fit the signal
+                //
+                fit_spectrum_simple(ich);
+            }
         }
-        
         _pk_tmp[ich]->Reset(); // reset the histogram
     } // loop over channels
 }
@@ -810,34 +814,57 @@ void analyzer::calculate_interval_data(){
 void analyzer::get_source_id()
 {
     cout <<"analyzer::get_source_id"<<endl;
+    
+    char channel_name[100];
+    
     // get the name of the first file in the data chain
     TFile * _f_tmp = fChain->GetFile();
+    _f_tmp->cd("info/active");
+    
+    TNamed *isActive;
+    for(int ichannel=0; ichannel<NUMBER_OF_CHANNELS; ichannel++){
+        
+        sprintf(channel_name,"channel_%i",ichannel);
+        gDirectory->GetObject(channel_name,isActive);
+        string active = isActive->GetTitle();
+        if(active == "On"){
+            channel_active[ichannel] = kTRUE;
+        } else {
+            channel_active[ichannel] = kFALSE;
+        }
+        
+    }
+    
     // retrieve the source information
     _f_tmp->cd("info/source");
     
-    char channel_name[100];
     TNamed *sourceName;
     for(int ichannel=0; ichannel<NUMBER_OF_CHANNELS; ichannel++){
         sprintf(channel_name,"channel_%i",ichannel);
         gDirectory->GetObject(channel_name,sourceName);
         string source = sourceName->GetTitle();
         
-        cout <<"ecal::get_source_id  channel = "<<ichannel<<" source = "<<source<<endl;
-        if(source == "Background"){
+        if(channel_active[ichannel]){
+            
+            cout <<"ecal::get_source_id  channel = "<<ichannel<<" source = "<<source<<endl;
+            if(source == "Background"){
+                source_id[ichannel] = BACKGROUND;
+            } else if ( source == "Ti-44"){
+                source_id[ichannel] = TI44;
+            } else if ( source == "Co-60"){
+                source_id[ichannel] = CO60;
+            } else if ( source == "Cs-137"){
+                source_id[ichannel] = CS137;
+            } else if ( source == "Mn-54"){
+                source_id[ichannel] = MN54;
+            } else if ( source == "K-40"){
+                source_id[ichannel] = K40;
+            } else {
+                cout <<"ecal::get_source_id() Unidentified source ..... TERMINATE"<<endl;
+                exit(-1);
+            }
+        } else {// if the channel is inactive, just set it to BACKGROUND (does not matter)
             source_id[ichannel] = BACKGROUND;
-        } else if ( source == "Ti-44"){
-            source_id[ichannel] = TI44;
-        } else if ( source == "Co-60"){
-            source_id[ichannel] = CO60;
-        } else if ( source == "Cs-137"){
-            source_id[ichannel] = CS137;
-        } else if ( source == "Mn-54"){
-            source_id[ichannel] = MN54;
-        } else if ( source == "K-40"){
-            source_id[ichannel] = K40;
-        } else {
-            cout <<"ecal::get_source_id() Unidentified source ..... TERMINATE"<<endl;
-            exit(-1);
         }
     }
     cout <<"analyzer::get_source_id ... done"<<endl;
@@ -850,7 +877,7 @@ void analyzer::get_source_id()
 void analyzer::Loop()
 {
     if (fChain == 0) return;
-
+    
     //
     // look in the first data file of the chain to see what sources are present
     //
@@ -869,39 +896,39 @@ void analyzer::Loop()
     cout<<"Start event loop.... nentries ="<<nentries<<endl;
     Long64_t nbytes = 0, nb = 0;
     Bool_t last_event = false;
-
+    
     for (Long64_t jentry=0; jentry<nentries;jentry++) {
         //
         // get entry from the tree
         //
         Long64_t ientry = LoadTree(jentry);
         if (ientry < 0) last_event = true;
-
-        if(!last_event){
-          nb = fChain->GetEntry(jentry);   nbytes += nb;
-          //
-          // process the time information.
-          //
-          if (jentry == 0) {
-              tstart = time;
-              // reset all averages
-              reset_interval_data();
-          }
-          time_since_start = time - tstart;
-          if (jentry == 0) t0 = time_since_start;
         
-          //
-          // fill the monitoring histograms
-          //
-          fill_histograms();
-          //
-          // add the data for the slow control average calculations
-          //
-          add_interval_data();
-          //
-          // if we exceed the maximum time interval, get all the data recorded
-          // during this time. then reset time for a new interval....
-          //
+        if(!last_event){
+            nb = fChain->GetEntry(jentry);   nbytes += nb;
+            //
+            // process the time information.
+            //
+            if (jentry == 0) {
+                tstart = time;
+                // reset all averages
+                reset_interval_data();
+            }
+            time_since_start = time - tstart;
+            if (jentry == 0) t0 = time_since_start;
+            
+            //
+            // fill the monitoring histograms
+            //
+            fill_histograms();
+            //
+            // add the data for the slow control average calculations
+            //
+            add_interval_data();
+            //
+            // if we exceed the maximum time interval, get all the data recorded
+            // during this time. then reset time for a new interval....
+            //
         }
         delta_t = time_since_start - t0;
         if((delta_t > TIME_INTERVAL) || last_event) {
@@ -916,7 +943,7 @@ void analyzer::Loop()
         }
         
         if(jentry%500000 == 0) cout<<"Processed "<<jentry<<" events"<<endl;
-
+        
         if(last_event) break;
     }
     
