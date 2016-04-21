@@ -47,6 +47,8 @@
 using namespace RooFit;
 #define MAX_PEAKS 5
 
+const string analysis_path("/Users/cassiereuter/Documents/dev/Modulation/analysis/calibration/");
+
 /*---------------------------------------------------------------------------------------------------*/
 float source_energy[NUMBER_OF_SOURCES][MAX_PEAKS] =
 //
@@ -57,7 +59,7 @@ float source_energy[NUMBER_OF_SOURCES][MAX_PEAKS] =
     {511.,1157.020,511.+1157.020,-1,-1}, // ID1: Ti44
     {1173.2,1332.5,1173.2+1332.5,-1,-1}, // ID2: Co60
     {661.7,-1,-1,-1,-1},                 // ID3: CS137
-    {-1,-1,-1,-1,-1},                    // ID4: MN54
+    {834.,-1,-1,-1,-1},                    // ID4: MN54
     {1460.,-1,-1,-1,-1}                  // ID5: K40
 };
 
@@ -73,6 +75,12 @@ const float emin = 0.; // in keV
 const float emax = 3000.; // in keV
 const float adc_max_volt = 2.;
 const float base_max_val = 2000;
+
+//
+// for cas_fitter
+//
+TH1 *h_bg;
+Double_t slope, b;
 
 
 /*----------------------------------------------------------------------------------------------------*/
@@ -90,6 +98,33 @@ Double_t fitf(Double_t *v, Double_t *par)
     
     return fitval;
 }
+
+/*----------------------------------------------------------------------------------------------------*/
+
+//
+// Gaussian function + 2nd order polynomial for simple rate fitting
+//
+// define a function with 3 parameters
+Double_t fitMC(Double_t *ibin, Double_t *par)
+{
+    int bin = (int)round(((par[0]*ibin[0]-par[1])-b)/slope);
+    // get MC value at the appropriate bin (y)
+    Double_t bg = h_bg->GetBinContent(bin);
+    
+    // scale background appropriately
+    Double_t bgval = par[2]*(bg-par[3]);
+    
+    // get energy value for Gaussian
+    Double_t E = (Double_t)h_bg->GetBinCenter(bin);
+    Double_t arg = (E-par[5])/par[6];
+    Double_t gaus = par[4]/(sqrt(2*TMath::Pi())*par[6])*TMath::Exp(-0.5*arg*arg);
+    
+    // BG + gauss
+    Double_t fitval = bgval+gaus;
+    
+    return fitval;
+}
+
 /*----------------------------------------------------------------------------------------------------*/
 void analyzer::fit_spectrum(int ichannel, double *fit_range){
     //
@@ -130,15 +165,15 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
     //
     string mc_file="";
     if       (id == TI44){
-        mc_file = "MC_ti44_modulation.root";
+        mc_file = analysis_path + "MC_ti44_modulation.root";
     } else if(id == CO60){
-        mc_file = "MC_co60_modulation.root";
+        mc_file = analysis_path + "MC_co60_modulation.root";
     } else if(id == CS137){
-        mc_file = "MC_cs137_modulation.root";
+        mc_file = analysis_path + "MC_cs137_modulation.root";
     } else if(id == MN54){
-        mc_file = "MC_mn54_modulation.root";
+        mc_file = analysis_path + "MC_mn54_modulation.root";
     } else if(id == K40){
-        mc_file = "MC_k40_modulation.root";
+        mc_file = analysis_path + "MC_k40_modulation.root";
     } else {
         cout <<"fit_spectrum:: BAD source identifier"<<endl;
     }
@@ -289,6 +324,169 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
 }
 
 /*----------------------------------------------------------------------------------------------------*/
+void analyzer::cas_fitter(int ichannel, int ipeak, double *fit_range){
+    // find all the selected energy peaks
+    //
+    int      maxbin;
+    double   maxval;
+    Double_t e_start, e0, demin, demax;
+    Double_t start, stop;
+    
+    // get the source ID
+    int id = source_id[ichannel];
+    
+    // start and stop for the energies
+    start = fit_range[0];
+    stop = fit_range[1];
+    //_pk_tmp[ichannel]->GetXaxis()->SetRangeUser(start,stop);
+    
+    TSpectrum *s = new TSpectrum(1);
+    s->Search(_pk_tmp[ipeak], 5, "new");
+    Double_t *peakpos = s->GetPositionX();
+    if (ipeak != 0) e_start = peakpos[ipeak]*source_energy[id][ipeak] / source_energy[id][0];
+    else e_start = peakpos[0];
+    
+    maxbin  = _pk_tmp[ichannel]->GetMaximumBin();
+    maxval  = _pk_tmp[ichannel]->GetBinContent(maxbin);
+    e_start = _pk_tmp[ichannel]->GetBinCenter(maxbin);
+            
+    _pk_tmp[ichannel]->GetXaxis()->SetRangeUser(0.,3000.);
+            
+    //
+    // the background template for each of the sources obtained from a GEANT4 simulation
+    //
+    string mc_file="";
+    if       (id == TI44){
+        mc_file = analysis_path + "MC_ti44_modulation.root";
+    } else if(id == CO60){
+        mc_file = analysis_path + "MC_co60_modulation.root";
+    } else if(id == CS137){
+        mc_file = analysis_path + "MC_cs137_modulation.root";
+    } else if(id == MN54){
+        mc_file = analysis_path + "MC_mn54_modulation.root";
+    } else if(id == K40){
+        mc_file = analysis_path + "MC_k40_modulation.root";
+    } else {
+        cout <<"fit_spectrum:: BAD source identifier"<<endl;
+    }
+            
+    cout <<"fit_spectrum:: channel = "<<ichannel<<" source_id = "<<id<<" MC template ="<<mc_file<<endl;
+            
+            
+    TFile *f_mc = new TFile(mc_file.c_str(),"READONLY");
+    h_bg  = (TH1*)f_mc->Get("h2");
+    // get start and stop bins for MC
+            
+    int mc_start, mc_end;
+    int nentries = h_bg->GetNbinsX();
+    mc_start = 1;
+    // get start
+    for (int i = 1; i <= nentries; i++)
+    {
+        if (h_bg->GetBinCenter(i) >= start) {
+            mc_start = i;
+            break;
+        }
+    }
+            
+    // get end
+    for (int i = mc_start; i <= nentries; i++)
+    {
+        if (h_bg->GetBinCenter(i) >= stop) {
+            mc_end = i;
+            break;
+        }
+    }
+    slope = (stop-start)/(mc_end-mc_start);
+    b = stop-slope*mc_end;
+
+    // fit a Gauss + background to a photopeak
+            
+    Double_t res_start = 0.06/2.35*sqrt(662.)*sqrt(e_start);
+    Double_t scale_guess = _pk_tmp[ichannel]->GetBinWidth(1)/h_bg->GetBinWidth(1);
+    Double_t vert_scaleguess = _pk_tmp[ichannel]->GetBinContent(100)/h_bg->GetBinContent(100); // some random bin
+            
+    _pk_tmp[ichannel]->Draw();
+    TF1 *func = new TF1("fit",fitMC,start,stop,7);
+            
+    cout << "GUESSES: [0] = " << 1 << " [1] = " << 0 << " [2] = " <<  vert_scaleguess << " [3] = " << 0. << " [4] = " <<  maxval << " [5] = " << e_start << " [6] = " << res_start << endl;
+            
+    func->SetParameters(1., 0., vert_scaleguess, 0., maxval,e_start,res_start);
+            
+    func->SetParLimits(5, e_start-100, e_start+100);
+            
+    func->SetParNames("horzscalefactor","horz_offset","bgamp", "bgvertoffset", "C","mean","sigma");
+            
+    _pk_tmp[ichannel]->Fit("fit","R Q","",start,stop);
+    _pk_tmp[ichannel]->Fit("fit","R Q","",start,stop);
+    _pk_tmp[ichannel]->Fit("fit","R","same",start,stop);
+            
+            
+    Double_t peak        = func->GetParameter(4);
+    _t_energy            = func->GetParameter(5);
+    if(ipeak ==0) e0 = _t_energy;
+    Double_t sigma       = func->GetParameter(6);
+    _t_res = 0;
+    if(_t_energy>0) _t_res = 2.355*sigma/_t_energy ;
+            
+    Double_t bin_width = (emax-emin)/nbin[ichannel];
+    Double_t dR1 = func->GetParError(4)/TIME_INTERVAL/bin_width;
+    _t_rate = peak / TIME_INTERVAL / bin_width;
+    cout <<"get_interval_data:: ich ="<<ichannel<<" ipeak = "<<ipeak
+    <<" E = "<<_t_energy<<" keV  rate = "<<_t_rate<<" Hz  resolution  = "<<_t_res<<" % "<<endl;
+    cout << "GAUSS AMP: " << func->GetParameter(4) << " BG AMP: " << func->GetParameter(2) << endl;
+            
+    Double_t parameters[7];
+    Double_t errors[7];
+            
+    for (int i = 0; i < 7; i++) {
+        parameters[i] = func->GetParameter(i);
+        errors[i] = func->GetParError(i);
+    }
+            
+    Double_t bg_int(0);
+    Double_t bg_err(0);
+    for (int i = mc_start; i < mc_end; i++) {
+        bg_int += func->GetParameter(2)*(h_bg->GetBinContent((int)round(func->GetParameter(1)*(i-func->GetParameter(1))) - func->GetParameter(3)));
+        bg_err += func->GetParameter(2)*(h_bg->GetBinError((int)round(func->GetParameter(1)*(i-func->GetParameter(1))) - func->GetParameter(3)));
+    }
+            
+    bg_int /= TIME_INTERVAL;
+    bg_int /= bin_width;
+    bg_err /= TIME_INTERVAL;
+    bg_err /= bin_width;
+            
+    // fill the output tree.....
+    addTreeEntry(_t_energy,_t_rate,dR1,_t_res,ichannel,ipeak, parameters, errors, bg_int, bg_err);
+            
+    TF1 *fitresult = _pk_tmp[ichannel]->GetFunction("fit");
+    
+    if (PLOT_ON_SCREEN == 1) {
+        TCanvas *c1 = new TCanvas("c1","c1",900,900);
+        c1->cd();
+        TF1* fittedgaus = new TF1("fittedgaus", "[0]/(2*TMath::Pi()*[2])*TMath::Exp((-1*(x-[1])*(x-[1]))/([2]*[2]))", fit_range[0], fit_range[1]);
+        fittedgaus->SetParameters(func->GetParameter(4), func->GetParameter(5), func->GetParameter(6));
+        TF1* fittedbg = new TF1("fittedbg", "[2]*(h_bg->GetBinContent((int)round((([0]*x-[1]-b)/slope)))-[3])", mc_start, mc_end);
+        fittedbg->SetParameters(func->GetParameter(0), func->GetParameter(1), func->GetParameter(2), func->GetParameter(3));
+        fittedgaus->SetLineColor(2);
+        fittedbg->SetLineColor(4);
+        fittedgaus->Draw("same");
+        fittedbg->Draw("same");
+    
+        c1->Update();
+            
+            
+        PlotResiduals(_pk_tmp[ichannel], fitresult, fit_range[0], fit_range[1]);
+    }
+    
+            
+    delete func;
+    f_mc->Close();
+    return;
+    
+}
+
+/*----------------------------------------------------------------------------------------------------*/
 void analyzer::fit_spectrum(int ichannel){
     //
     // RooFit based spectrum fitter
@@ -309,15 +507,15 @@ void analyzer::fit_spectrum(int ichannel){
     //
     string mc_file="";
     if       (id == TI44){
-        mc_file = "/user/z37/Modulation/analysis/calibration/MC_ti44_modulation.root";
+        mc_file = analysis_path + "MC_ti44_modulation.root";
     } else if(id == CO60){
-        mc_file = "/user/z37/Modulation/analysis/calibration/MC_co60_modulation.root";
+        mc_file = analysis_path + "MC_co60_modulation.root";
     } else if(id == CS137){
-        mc_file = "/user/z37/Modulation/analysis/calibration/MC_cs137_modulation.root";
+        mc_file = analysis_path + "MC_cs137_modulation.root";
     } else if(id == MN54){
-        mc_file = "/user/z37/Modulation/analysis/calibration/MC_mn54_modulation.root";
+        mc_file = analysis_path + "MC_mn54_modulation.root";
     } else if(id == K40){
-        mc_file = "/user/z37/Modulation/analysis/calibration/MC_k40_modulation.root";
+        mc_file = analysis_path + "MC_k40_modulation.root";
     } else {
         cout <<"fit_spectrum:: BAD source identifier"<<endl;
     }
@@ -449,16 +647,21 @@ void analyzer::processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealV
     dR1 += 2*Norm*frac*covariance(idx,0);
     dR1 +=   frac*frac*covariance(0,0);
     dR1 = sqrt(dR1)/delta_t;
+    
+    //TODO ADD FIT PARAMETERS
+    Double_t parameters[4];
+    Double_t errors[4];
+    
     //
     // calculate error on the rate
     //
     Double_t res  = 2.355*sig.getValV()/E1;
     cout <<ichannel<<" "<<ipeak<<" "<<E1<<" "<<res<<" R = "<<R1<<" +- "<<dR1<<endl;
-    addTreeEntry(E1,R1,dR1,res,ichannel,ipeak);
+    addTreeEntry(E1,R1,dR1,res,ichannel,ipeak, parameters, errors, 0., 0.);
 }
 
 /*----------------------------------------------------------------------------------------------------*/
-void analyzer::addTreeEntry(Double_t E, Double_t R, Double_t dR, Double_t res, Int_t ich, Int_t ipk){
+void analyzer::addTreeEntry(Double_t E, Double_t R, Double_t dR, Double_t res, Int_t ich, Int_t ipk, Double_t* parameters, Double_t* errors, Double_t bg_int, Double_t bg_err){
     //
     // fill the tree with the fit results.
     //
@@ -470,6 +673,26 @@ void analyzer::addTreeEntry(Double_t E, Double_t R, Double_t dR, Double_t res, I
     _t_res    = res;
     _t_chanNum = ich;
     _t_peakNum = ipk;
+    
+    
+    _t_bg_int = bg_int;
+    _t_bg_err = bg_err;
+    
+    _t_par0 = parameters[0];
+    _t_par1 = parameters[1];
+    _t_par2 = parameters[2];
+    _t_par3 = parameters[3];
+    _t_par4 = parameters[4];
+    _t_par5 = parameters[5];
+    _t_par6 = parameters[6];
+    
+    _t_err0 = errors[0];
+    _t_err1 = errors[1];
+    _t_err2 = errors[2];
+    _t_err3 = errors[3];
+    _t_err4 = errors[4];
+    _t_err5 = errors[5];
+    _t_err6 = errors[6];
     
     // this should be the only place where the fill command is called
     tree->Fill();
@@ -543,6 +766,35 @@ void analyzer::book_histograms(){
     tree->Branch("bz", &_t_bz, "bz/D");
     tree->Branch("btot", &_t_btot, "btot/D");
     tree->Branch("humid", &_t_humid, "humid/D");
+    
+    tree->Branch("hv0", &_t_hv0, "hv0/D");
+    tree->Branch("hv1", &_t_hv1, "hv1/D");
+    tree->Branch("hv2", &_t_hv2, "hv2/D");
+    tree->Branch("hv3", &_t_hv3, "hv3/D");
+    tree->Branch("hv4", &_t_hv4, "hv4/D");
+    tree->Branch("hv5", &_t_hv5, "hv5/D");
+    tree->Branch("hv6", &_t_hv6, "hv6/D");
+    tree->Branch("hv7", &_t_hv7, "hv7/D");
+    
+    tree->Branch("bg_int", &_t_bg_int, "bg_int/D");
+    tree->Branch("bg_err", &_t_bg_err, "bg_err/D");
+    
+    tree->Branch("par0",&_t_par0, "par0/D");
+    tree->Branch("par1",&_t_par1, "par1/D");
+    tree->Branch("par2",&_t_par2, "par2/D");
+    tree->Branch("par3",&_t_par3, "par3/D");
+    tree->Branch("par4",&_t_par4, "par4/D");
+    tree->Branch("par5",&_t_par5, "par5/D");
+    tree->Branch("par6",&_t_par6, "par6/D");
+    
+    tree->Branch("err0",&_t_err0, "err0/D");
+    tree->Branch("err1",&_t_err1, "err1/D");
+    tree->Branch("err2",&_t_err2, "err2/D");
+    tree->Branch("err3",&_t_err3, "err3/D");
+    tree->Branch("err4",&_t_err4, "err4/D");
+    tree->Branch("err5",&_t_err5, "err5/D");
+    tree->Branch("err6",&_t_err6, "err6/D");
+    
 }
 /*----------------------------------------------------------------------------------------------------*/
 void analyzer::fill_histograms(){
@@ -607,25 +859,33 @@ void analyzer::get_interval_data(){
             int id = source_id[ich];
             if        (id == TI44) {
                 range[0] = 400; range[1] = 620;
-                fit_spectrum(ich, range);
+                if (ROOFIT_ON == 1) fit_spectrum(ich, range);
+                else cas_fitter(ich, 0, range);
                 range[0] = 1000; range[1] = 1300;
-                fit_spectrum(ich, range);
+                if (ROOFIT_ON == 1) fit_spectrum(ich, range);
+                else cas_fitter(ich, 1, range);
                 range[0] = 1500; range[1] = 2000;
-                fit_spectrum(ich, range);
+                if (ROOFIT_ON == 1) fit_spectrum(ich, range);
+                else cas_fitter(ich, 2, range);
             } else if (id == CO60 ) {
                 range[0] = 900; range[1] = 1600;
-                fit_spectrum(ich, range);
+                if (ROOFIT_ON == 1) fit_spectrum(ich, range);
+                else cas_fitter(ich, 0, range);
                 range[0] = 2200; range[1] = 2800;
-                fit_spectrum(ich, range);
+                if (ROOFIT_ON == 1) fit_spectrum(ich, range);
+                else cas_fitter(ich, 1, range);
             } else if (id == CS137 ) {
                 range[0] = 400; range[1] = 1000;
-                fit_spectrum(ich, range);
+                if (ROOFIT_ON == 1) fit_spectrum(ich, range);
+                else cas_fitter(ich, 0, range);;
             } else if (id == MN54) {
-                range[0] = 0; range[1] = 2000;
-                fit_spectrum(ich, range);
+                range[0] = 700; range[1] = 900;
+                if (ROOFIT_ON == 1) fit_spectrum(ich, range);
+                else cas_fitter(ich, 0, range);
             } else if (id == K40) {
                 range[0] = 1300; range[1] = 1600;
-                fit_spectrum(ich, range);
+                if (ROOFIT_ON == 1) fit_spectrum(ich, range);
+                else cas_fitter(ich, 0, range);
             } else {
                 //
                 // if we deal with the background detectors we use a linear fit + gauss to fit the signal
@@ -719,8 +979,16 @@ void analyzer::fit_spectrum_simple(int ichannel){
             cout <<"get_interval_data:: ich ="<<ichannel<<" ipeak = "<<ipeak
             <<" E = "<<_t_energy<<" keV  rate = "<<_t_rate<<" Hz  resolution  = "<<_t_res<<" % "<<endl;
             
+            Double_t parameters[3];
+            Double_t errors[3];
+            
+            for (int i = 0; i < 3; i++) {
+                parameters[i] = func->GetParameter(i);
+                errors[i] = func->GetParError(i);
+            }
+            
             // fille the output tree.....
-            addTreeEntry(_t_energy,_t_rate,1.0,_t_res,ichannel,ipeak);
+            addTreeEntry(_t_energy,_t_rate,1.0,_t_res,ichannel,ipeak, parameters, errors, 0.0, 0.0);
             //            c1->Update();
             
             delete func;
@@ -783,6 +1051,15 @@ void analyzer::reset_interval_data(){
     _t_btot = 0;
     _t_humid = 0;
     
+    _t_hv0 = 0;
+    _t_hv1 = 0;
+    _t_hv2 = 0;
+    _t_hv3 = 0;
+    _t_hv4 = 0;
+    _t_hv5 = 0;
+    _t_hv6 = 0;
+    _t_hv7 = 0;
+    
 }
 /*----------------------------------------------------------------------------------------------------*/
 void analyzer::add_interval_data(){
@@ -796,18 +1073,34 @@ void analyzer::add_interval_data(){
     _t_bz += bz;
     _t_btot += btot;
     _t_humid += humid;
+    _t_hv0 += hv0;
+    _t_hv1 += hv1;
+    _t_hv2 += hv2;
+    _t_hv3 += hv3;
+    _t_hv4 += hv4;
+    _t_hv5 += hv5;
+    _t_hv6 += hv6;
+    _t_hv7 += hv7;
     
 }
 /*----------------------------------------------------------------------------------------------------*/
 void analyzer::calculate_interval_data(){
     if(n_interval>0){
-        _t_temp /= n_interval;
-        _t_pres /= n_interval;
-        _t_bx /= n_interval;
-        _t_by /= n_interval;
-        _t_bz /= n_interval;
-        _t_btot /= n_interval;
-        _t_humid /= n_interval;
+        _t_temp += temp;
+        _t_pres += pres;
+        _t_bx += bx;
+        _t_by += by;
+        _t_bz += bz;
+        _t_btot += btot;
+        _t_humid += humid;
+        _t_hv0 += hv0;
+        _t_hv1 += hv1;
+        _t_hv2 += hv2;
+        _t_hv3 += hv3;
+        _t_hv4 += hv4;
+        _t_hv5 += hv5;
+        _t_hv6 += hv6;
+        _t_hv7 += hv7;
     }
 }
 /*---------------------------------------------------------------------------------------------------*/
@@ -870,6 +1163,64 @@ void analyzer::get_source_id()
     cout <<"analyzer::get_source_id ... done"<<endl;
     
 }
+/*---------------------------------------------------------------------------------------------------*/
+void analyzer::PlotResiduals(TH1F *inthist, TF1* fitresult, Float_t Elow, Float_t Ehigh) {
+    Float_t nsigmas(3.);
+    int nbins = inthist->GetNbinsX();
+    
+    cout << "PLOT RESIDUALS" << endl;
+    Float_t resid_i(0);
+    std::vector<Float_t> residuals;
+    std::vector<Float_t> energies;
+    std::vector<Float_t> eerrors;
+    std::vector<Float_t> rerrors;
+
+    int mc_start, mc_end;
+    mc_start = 1;
+    // get start
+    for (int i = 1; i <= nbins; i++)
+    {
+        if (inthist->GetBinCenter(i) >= Elow) {
+            mc_start = i;
+            break;
+        }
+    }
+
+    // get end
+    for (int i = mc_start; i <= nbins; i++)
+    {
+        if (inthist->GetBinCenter(i) >= Ehigh) {
+            mc_end = i;
+            break;
+        }
+    }
+
+    for (int i = mc_start; i <= mc_end; i++) {
+        if (inthist->GetBinCenter(i) >= Elow && inthist->GetBinCenter(i) < Ehigh) {
+            cout << "Bin content: " << inthist->GetBinContent(i) << endl;
+            cout << "Bin center: " << inthist->GetBinCenter(i) << endl;
+            cout << "Eval: " << fitresult->Eval(inthist->GetBinCenter(i));
+            resid_i = (inthist->GetBinContent(i) - fitresult->Eval(inthist->GetBinCenter(i)))/inthist->GetBinError(i);
+            cout <<"i: " << i <<  " measured: " << inthist->GetBinContent(i) << " expected: " << fitresult->Eval(inthist->GetBinCenter(i)) << " diff : " << inthist->GetBinContent(i) - fitresult->Eval(inthist->GetBinCenter(i)) << " sigma: " << inthist->GetBinError(i) << " residual: " << resid_i << endl;
+            residuals.push_back(resid_i);
+            energies.push_back(inthist->GetBinCenter(i));
+            eerrors.push_back(inthist->GetBinError(i));
+            rerrors.push_back(inthist->GetBinError(i));
+        }
+    }
+    
+    TCanvas *c2 = new TCanvas("c2", "c2");
+    c2->cd();
+    // draw residuals here
+    
+    TGraph *residualplot = new TGraph(energies.size(), energies.data(), residuals.data());
+    residualplot->GetXaxis()->SetTitle("Energy ");
+    residualplot->GetYaxis()->SetTitle("Residuals");
+    residualplot->Draw("AP");
+    
+    return;
+}
+
 /*----------------------------------------------------------------------------------------------------*/
 //
 // MAIN:: Loop routine
