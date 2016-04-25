@@ -125,6 +125,19 @@ Double_t fitMC(Double_t *ibin, Double_t *par)
     return fitval;
 }
 
+// just the BG
+Double_t BGmodel(Double_t *x, Double_t *par)
+{
+    int bin = (int)round(((par[0]*(x[0]-par[1]))-b)/slope);
+    // get MC value at the appropriate bin (y)
+    Double_t bg = h_bg->GetBinContent(bin);
+    
+    // scale background appropriately
+    Double_t bgval = par[2]*(bg-par[3]);
+    
+    return bgval;
+}
+
 /*----------------------------------------------------------------------------------------------------*/
 void analyzer::fit_spectrum(int ichannel, double *fit_range){
     //
@@ -405,8 +418,7 @@ void analyzer::cas_fitter(int ichannel, int ipeak, double *fit_range){
     Double_t res_start = 0.06/2.35*sqrt(662.)*sqrt(e_start);
     Double_t scale_guess = _pk_tmp[ichannel]->GetBinWidth(1)/h_bg->GetBinWidth(1);
     Double_t vert_scaleguess = _pk_tmp[ichannel]->GetBinContent(100)/h_bg->GetBinContent(100); // some random bin
-            
-    _pk_tmp[ichannel]->Draw();
+
     TF1 *func = new TF1("fit",fitMC,start,stop,7);
             
     cout << "GUESSES: [0] = " << 1 << " [1] = " << 0 << " [2] = " <<  vert_scaleguess << " [3] = " << 0. << " [4] = " <<  maxval << " [5] = " << e_start << " [6] = " << res_start << endl;
@@ -416,10 +428,10 @@ void analyzer::cas_fitter(int ichannel, int ipeak, double *fit_range){
     func->SetParLimits(5, e_start-100, e_start+100);
             
     func->SetParNames("horzscalefactor","horz_offset","bgamp", "bgvertoffset", "C","mean","sigma");
-            
+    
     _pk_tmp[ichannel]->Fit("fit","R Q","",start,stop);
     _pk_tmp[ichannel]->Fit("fit","R Q","",start,stop);
-    _pk_tmp[ichannel]->Fit("fit","R","same",start,stop);
+    _pk_tmp[ichannel]->Fit("fit","R","",start,stop);
             
             
     Double_t peak        = func->GetParameter(4);
@@ -462,21 +474,39 @@ void analyzer::cas_fitter(int ichannel, int ipeak, double *fit_range){
     TF1 *fitresult = _pk_tmp[ichannel]->GetFunction("fit");
     
     if (PLOT_ON_SCREEN == 1) {
-        TCanvas *c1 = new TCanvas("c1","c1",900,900);
+        
+        TCanvas *c1 = new TCanvas("c1", "c1", 600, 300);
         c1->cd();
-        TF1* fittedgaus = new TF1("fittedgaus", "[0]/(2*TMath::Pi()*[2])*TMath::Exp((-1*(x-[1])*(x-[1]))/([2]*[2]))", fit_range[0], fit_range[1]);
+        c1->SetLogy();
+        _pk_tmp[ichannel]->GetXaxis()->SetRangeUser(fit_range[0]-100,fit_range[1]+100);
+        _pk_tmp[ichannel]->SetTitle("energy spectrum");
+            cout << "ENTRIES: " << _pk_tmp[ichannel]->GetEntries() << endl;
+        _pk_tmp[ichannel]->Draw();
+        
+        TF1* fittedgaus = new TF1("fittedgaus", "[0]/(2*TMath::Pi()*[2])*TMath::Exp((-1*(x-[1])*(x-[1]))/([2]*[2]))", fit_range[0]-100, fit_range[1]+100);
         fittedgaus->SetParameters(func->GetParameter(4), func->GetParameter(5), func->GetParameter(6));
-        TF1* fittedbg = new TF1("fittedbg", "[2]*(h_bg->GetBinContent((int)round((([0]*x-[1]-b)/slope)))-[3])", mc_start, mc_end);
+        TF1* fittedbg = new TF1("fittedbg", BGmodel, fit_range[0]-100, fit_range[1]+100, 4);
         fittedbg->SetParameters(func->GetParameter(0), func->GetParameter(1), func->GetParameter(2), func->GetParameter(3));
         fittedgaus->SetLineColor(2);
         fittedbg->SetLineColor(4);
+        fitresult->Draw("same");
         fittedgaus->Draw("same");
         fittedbg->Draw("same");
-    
+        fitresult->SetRange(fit_range[0]-100, fit_range[1]+100);
+        fitresult->Draw("same");
+        
+        /*
+        char pdfname[256];
+        sprintf(pdfname,"fitted_mn54.png");
+        c1->Print(pdfname);
+        sprintf(pdfname,"fitted_mn54.pdf");
+        c1->Print(pdfname);
+        */
         c1->Update();
-            
+        
             
         PlotResiduals(_pk_tmp[ichannel], fitresult, fit_range[0], fit_range[1]);
+        
     }
     
             
@@ -893,7 +923,7 @@ void analyzer::get_interval_data(){
                 fit_spectrum_simple(ich);
             }
         }
-        _pk_tmp[ich]->Reset(); // reset the histogram
+        //_pk_tmp[ich]->Reset(); // reset the histogram // TODO
     } // loop over channels
 }
 /*----------------------------------------------------------------------------------------------------*/
@@ -1248,6 +1278,8 @@ void analyzer::Loop()
     Long64_t nbytes = 0, nb = 0;
     Bool_t last_event = false;
     
+    for (int ichannel = 0; ichannel < NUMBER_OF_CHANNELS; ichannel++) _pk_tmp[ichannel]->Sumw2();
+    
     for (Long64_t jentry=0; jentry<nentries;jentry++) {
         //
         // get entry from the tree
@@ -1287,6 +1319,7 @@ void analyzer::Loop()
             calculate_interval_data();
             // fitting of the peaks
             get_interval_data();
+            break;
             // reset the time for the start of the next interval
             t0 = time_since_start;
             // reset the interval data for calculating averages
