@@ -25,6 +25,7 @@
 #define MAX_PEAKS 5
 #define MAX_PARAMETERS 3
 
+#define PLOT_ON_SCREEN 1
 #define BEFORE_CALIBRATION 0
 #define AFTER_CALIBRATION 1
 
@@ -33,7 +34,7 @@
 // CALIBRATION_MODE 1 = one calibration every TIME_INTERVAL seconds
 //
 #define CALIBRATION_MODE 1
-#define TIME_INTERVAL 1800 
+#define TIME_INTERVAL 7200 
 
 /*----------------------------------------------------------------------------*/
 

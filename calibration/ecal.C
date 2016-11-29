@@ -29,8 +29,11 @@
 // (2) Set range_low and range_high to find the range in which the peak with cal_energy should be
 
 //                                           CH0       CH1         CH2         CH3       CH4    CH5    CH6    CH7
-const double range_low[NUMBER_OF_CHANNELS] ={0.16e-6 , 0.14e-6   , 0.05e-6   , 0.05e-6 , 0.   , 0.   , 0.   , 0.  };
+const double range_low[NUMBER_OF_CHANNELS] ={0.16e-6 , 0.13e-6   , 0.05e-6   , 0.05e-6 , 0.   , 0.   , 0.   , 0.  };
 const double range_high[NUMBER_OF_CHANNELS]={1e-6    , 1e-6      , 1e-6      , 1e-6    , 1e-6 , 1e-6 , 1e-6 , 1e6 };
+
+// const double range_low[NUMBER_OF_CHANNELS] ={0.4e-6 , 0.14e-6   , 0.05e-6   , 0.05e-6 , 0.   , 0.   , 0.   , 0.  };
+// const double range_high[NUMBER_OF_CHANNELS]={0.5e-6    , 1e-6      , 1e-6      , 1e-6    , 1e-6 , 1e-6 , 1e-6 , 1e6 };
 
 /*---------------------------------------------------------------------------------------------------*/
 float source_energy[NUMBER_OF_SOURCES][MAX_PEAKS] =
@@ -38,7 +41,7 @@ float source_energy[NUMBER_OF_SOURCES][MAX_PEAKS] =
 // the energy peaks you wish to select for the calibration should be in this list
 //
 {
-    {1460.,-1,-1,-1,-1},                 // ID0: Background
+    {1460., 2614.5, -1,-1,-1},                 // ID0: Background
     {511.,1157.020,511.+1157.020,-1,-1}, // ID1: Ti44
     {1173.2,1332.5,1173.2+1332.5,-1,-1}, // ID2: Co60
     {661.7,-1,-1,-1,-1},                 // ID3: CS137
@@ -137,6 +140,7 @@ void ecal::get_source_id()
 {
     
     cout <<"ecal::get_source_id"<<endl;
+    // cout <<"test"<<endl;
     char channel_name[100];
     
     // get the name of the first file in the data chain
