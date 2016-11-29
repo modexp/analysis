@@ -197,44 +197,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
 
     RooHistPdf bg_ch0ch1("bg_ch0ch1","bg_ch0ch1", E, mc2, 0);
     
-    // Calculate the expected fraction of BG based on the first bin of the fitted range
-    // int binnum = fit_range[0] / 5; // Binwidth = 5 keV
-    // cout  << "Comparing rate in bin = " << binnum << endl;
-    // mc2.get(binnum) ; double events_mc2 = mc2.weight() / time_template; double devents_mc2 = mc2.weightError() / time_template;
-    // mc3.get(binnum) ; double events_mc3 = mc3.weight() / time_template; double devents_mc3 = mc3.weightError() / time_template;
-    // data.get(binnum); double events_data = data.weight() / delta_t    ; double devents_data = data.weightError() / delta_t;
-    
-    // double bg_frac = (events_mc2 ) / (events_data );
-    // double dbg_frac = bg_frac * sqrt( pow((devents_mc2 / events_mc2), 2) + pow((devents_data / events_data), 2));
-    // cout <<  "Events/time in BG bin = "  << events_mc2  <<  "+/-" <<  devents_mc2  << endl;
-    // cout <<  "Events in BG bin = "  << events_mc2*time_template  <<  "+/-" <<  devents_mc2*time_template  << endl;
-    // cout <<  "Events*time2 in BG bin = "  << events_mc2*delta_t  <<  "+/-" <<  devents_mc2*delta_t  << endl;
-    // cout <<  "Events/time in BG bin = "  << events_mc3  <<  "+/-" <<  devents_mc3  << endl;
-    // cout <<  "Events in BG bin = "  << events_mc3*time_template  <<  "+/-" <<  devents_mc3*time_template  << endl;
-    // cout <<  "Events*time2 in BG bin = "  << events_mc3*delta_t  <<  "+/-" <<  devents_mc3*delta_t  << endl;
-    // cout <<  "Events/time in data bin = "<< events_data <<  "+/-" <<  devents_data<< endl;
-    // cout <<  "Events in data bin = "<< events_data*delta_t <<  "+/-" <<  devents_data*delta_t<< endl;
-    // cout <<  "Expected fraction = "      << bg_frac     <<  "+/-" <<  dbg_frac     << endl;
-    // // Introduce the relative weight of this PDF that is fitted
-    // std::vector<RooRealVar*> ch0ch1_frac;
-    // if (ichannel == 2 || ichannel == 3 || ichannel == 6 || ichannel == 7){
-    //     // The fitted fraction may be up to 30 standad deviations away since the portion of the BG spectrum might be different for each channel and each PMT.
-    //     cout <<  "Fitted a fraction between "<< bg_frac - 100 * dbg_frac << " and " << bg_frac + 100 * dbg_frac<<endl;       
-        
-    //     // // A simple background fraction can also be used (as below)
-    //     // ch0ch1_frac.push_back(new RooRealVar("ch0ch1","ch0ch1",0.07,0.001,0.50));
-    //     ch0ch1_frac.push_back(new RooRealVar("ch0ch1","ch0ch1", bg_frac, bg_frac - 100 * dbg_frac, bg_frac + 100 * dbg_frac));
-    // }else{
-    //     // The fitted fraction may be up to 30 standad deviations away since the portion of the BG spectrum might be different for each channel and each PMT.
-    //     cout <<  "Fitted a fraction between "<< bg_frac - 10 * dbg_frac << " and " << bg_frac + 10 * dbg_frac<<endl;
-
-    //     // // A simple background fraction can also be used (as below)
-    //     // ch0ch1_frac.push_back(new RooRealVar("ch0ch1","ch0ch1",0.07,0.001,0.50));
-    //     ch0ch1_frac.push_back(new RooRealVar("ch0ch1","ch0ch1", bg_frac, bg_frac - 10 * dbg_frac, bg_frac + 10 * dbg_frac));
-    // }
-
-
-    //
+        //
     // Calculate the expected fraction of the background. For this we compute both the total number of events in the specified
     // interval for this channel, channel 0 and channel 1. The disagreement between channel 0 and channel 1 is used as an estimate
     // for the systematical error on this number.
@@ -263,7 +226,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
 
     std::vector<RooRealVar*> ch0ch1_frac;
     
-    // The fitted fraction may be up to 30 standad deviations away since the portion of the BG spectrum might be different for each channel and each PMT.
+    // The fitted fraction may be up to 10 times the difference in expectation between channel 0 and channel 1 (both measureing background) since the portion of the BG spectrum might be different for each channel and each PMT.
     cout <<  "Fitted a fraction between "<< bg_frac - 10 * dbg_frac << " and " << bg_frac + 10 * dbg_frac<<endl;
 
     // // A simple background fraction can also be used (as below)
@@ -995,7 +958,6 @@ void analyzer::book_histograms(){
     tree->Branch("frac", &_t_fractry, "frac/D"); //joranadd
     tree->Branch("chi2ndf", &_t_chi2, "chi2/D"); //joranadd
 
-    //cassieadd
     tree->Branch("hv0", &_t_hv0, "hv0/D");
     tree->Branch("hv1", &_t_hv1, "hv1/D");
     tree->Branch("hv2", &_t_hv2, "hv2/D");
@@ -1288,7 +1250,7 @@ void analyzer::reset_interval_data(){
     _t_humid = 0;
     //_t_fractry = 0; //joranadd
 
-    //cassieadd
+    
     _t_hv0 = 0;
     _t_hv1 = 0;
     _t_hv2 = 0;
@@ -1313,7 +1275,6 @@ void analyzer::add_interval_data(){
     _t_humid += humid;
     //_t_fractry += fractry;
 
-    //Cassieadd
     _t_hv0 += hv0;
     _t_hv1 += hv1;
     _t_hv2 += hv2;
