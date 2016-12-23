@@ -68,12 +68,12 @@ float source_energy[NUMBER_OF_SOURCES][MAX_PEAKS] =
 //
 const int   nbin0 = 600;
 // number of bins for the temporary fit histograms.... channels 0+1 have few entries so wider bins
-float nbin[NUMBER_OF_CHANNELS]={nbin0/4,nbin0/4,nbin0,nbin0,nbin0,nbin0,nbin0,nbin0};
+float nbin[NUMBER_OF_CHANNELS]={nbin0,nbin0,nbin0,nbin0,nbin0,nbin0,nbin0,nbin0};
 const float emin = 0.; // in keV
 const float emax = 3000.; // in keV
 const float adc_max_volt = 2.;
 const float base_max_val = 2000;
-const float time_template= 554628.28; // This time is reported in the report produced by the template builder (it is the ammount of time over which the data is taken to create the BG templates)
+const float time_template= 970303.582632; // This time is reported in the report produced by the template builder (it is the ammount of time over which the data is taken to create the BG templates)
 
 
 /*----------------------------------------------------------------------------------------------------*/
@@ -197,7 +197,43 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
 
     RooHistPdf bg_ch0ch1("bg_ch0ch1","bg_ch0ch1", E, mc2, 0);
     
+    // Calculate the expected fraction of BG based on the first bin of the fitted range
+    // int binnum = fit_range[0] / 5; // Binwidth = 5 keV
+    // cout  << "Comparing rate in bin = " << binnum << endl;
+    // mc2.get(binnum) ; double events_mc2 = mc2.weight() / time_template; double devents_mc2 = mc2.weightError() / time_template;
+    // mc3.get(binnum) ; double events_mc3 = mc3.weight() / time_template; double devents_mc3 = mc3.weightError() / time_template;
+    // data.get(binnum); double events_data = data.weight() / delta_t    ; double devents_data = data.weightError() / delta_t;
     
+    // double bg_frac = (events_mc2 ) / (events_data );
+    // double dbg_frac = bg_frac * sqrt( pow((devents_mc2 / events_mc2), 2) + pow((devents_data / events_data), 2));
+    // cout <<  "Events/time in BG bin = "  << events_mc2  <<  "+/-" <<  devents_mc2  << endl;
+    // cout <<  "Events in BG bin = "  << events_mc2*time_template  <<  "+/-" <<  devents_mc2*time_template  << endl;
+    // cout <<  "Events*time2 in BG bin = "  << events_mc2*delta_t  <<  "+/-" <<  devents_mc2*delta_t  << endl;
+    // cout <<  "Events/time in BG bin = "  << events_mc3  <<  "+/-" <<  devents_mc3  << endl;
+    // cout <<  "Events in BG bin = "  << events_mc3*time_template  <<  "+/-" <<  devents_mc3*time_template  << endl;
+    // cout <<  "Events*time2 in BG bin = "  << events_mc3*delta_t  <<  "+/-" <<  devents_mc3*delta_t  << endl;
+    // cout <<  "Events/time in data bin = "<< events_data <<  "+/-" <<  devents_data<< endl;
+    // cout <<  "Events in data bin = "<< events_data*delta_t <<  "+/-" <<  devents_data*delta_t<< endl;
+    // cout <<  "Expected fraction = "      << bg_frac     <<  "+/-" <<  dbg_frac     << endl;
+    // // Introduce the relative weight of this PDF that is fitted
+    // std::vector<RooRealVar*> ch0ch1_frac;
+    // if (ichannel == 2 || ichannel == 3 || ichannel == 6 || ichannel == 7){
+    //     // The fitted fraction may be up to 30 standad deviations away since the portion of the BG spectrum might be different for each channel and each PMT.
+    //     cout <<  "Fitted a fraction between "<< bg_frac - 100 * dbg_frac << " and " << bg_frac + 100 * dbg_frac<<endl;       
+        
+    //     // // A simple background fraction can also be used (as below)
+    //     // ch0ch1_frac.push_back(new RooRealVar("ch0ch1","ch0ch1",0.07,0.001,0.50));
+    //     ch0ch1_frac.push_back(new RooRealVar("ch0ch1","ch0ch1", bg_frac, bg_frac - 100 * dbg_frac, bg_frac + 100 * dbg_frac));
+    // }else{
+    //     // The fitted fraction may be up to 30 standad deviations away since the portion of the BG spectrum might be different for each channel and each PMT.
+    //     cout <<  "Fitted a fraction between "<< bg_frac - 10 * dbg_frac << " and " << bg_frac + 10 * dbg_frac<<endl;
+
+    //     // // A simple background fraction can also be used (as below)
+    //     // ch0ch1_frac.push_back(new RooRealVar("ch0ch1","ch0ch1",0.07,0.001,0.50));
+    //     ch0ch1_frac.push_back(new RooRealVar("ch0ch1","ch0ch1", bg_frac, bg_frac - 10 * dbg_frac, bg_frac + 10 * dbg_frac));
+    // }
+
+
     //
     // Calculate the expected fraction of the background. For this we compute both the total number of events in the specified
     // interval for this channel, channel 0 and channel 1. The disagreement between channel 0 and channel 1 is used as an estimate
@@ -260,7 +296,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         sprintf(vname,"sigma%i",isel);
         pk_sigma.push_back(new RooRealVar(vname,vname,25,5,100));
         sprintf(vname,"frac%i",isel);
-        pk_frac.push_back(new RooRealVar(vname,vname,0.2,0.0,1.0));
+        pk_frac.push_back(new RooRealVar(vname,vname,0.3,0.0,1.0));
         
         sprintf(vname,"gaus%i",isel);
         pk_gaus.push_back(new RooGaussian(vname,vname,E,*pk_mean[isel],*pk_sigma[isel]));
@@ -338,7 +374,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
             cout << Eres_frame->chiSquare() <<endl;
             
             Double_t chindf2 = Eres_frame->chiSquare() ;
-            processFitData(Norm,*pk_frac[id],*pk_mean[id],*pk_sigma[id], ichannel,peak_id[id], chindf2);
+            if(int(TIME_INTERVAL)==int(delta_t)) processFitData(Norm,*pk_frac[id],*pk_mean[id],*pk_sigma[id], ichannel,peak_id[id], chindf2);
         }
     }
     //============================
@@ -379,6 +415,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         cout <<"chi2 for channel = "<<ichannel<<endl;
         Double_t chindf = Eframe->chiSquare() ;
         cout << chindf <<endl;
+
 
         RooHist *hresid =  Eframe->residHist();
         RooHist* hpull = Eframe->pullHist();
@@ -426,7 +463,11 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
       
         // Show the chi2 and the run name on the first frame
         TPaveLabel *t0 = new TPaveLabel(0.1,1.0,0.9,0.9, Form("%s", run.c_str()), "brNDC"); 
-        TPaveLabel *t1 = new TPaveLabel(0.1,0.88,0.3,0.80, Form("#chi^{2} = %.3f", chindf), "brNDC"); 
+        TPaveLabel *t1 = new TPaveLabel(0.1,0.88,0.3,0.80, Form("#chi^{2} = %.2f", chindf), "brNDC"); 
+        // Double_t frac = *pk_frac[id].getValV();
+        // Double_t R1   = Norm*frac/delta_t;
+        // R1 -> paramOn(Eframe,Layout(0.35,0.88,0.85-id*0.15));
+        // TPaveLabel *t3 = new TPaveLabel(0.1,0.88,0.3,0.80, Form("#chi^{2} = %.3f", R1), "brNDC"); 
         Eframe -> addObject(t0);
         Eframe -> addObject(t1);
 
@@ -434,8 +475,16 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
             esum.plotOn(Eframe,Components(*pk_gaus[id]),LineColor(2),LineWidth(2));
             pk_gaus[id]->paramOn(Eframe,Layout(0.55,0.88,0.85-id*0.15));
             esum.plotOn(spec_full_frame,Components(*pk_gaus[id]),LineColor(2),LineWidth(2));
-            pk_gaus[id]->paramOn(spec_full_frame,Layout(0.55,0.88,0.85-id*0.15)); 
+            // pk_gaus[id]->paramOn(spec_full_frame,Layout(0.55,0.88,0.85-id*0.15)); 
+            // test =;
+            Double_t frac =  pk_frac[id]->getVal();
+            
+            Double_t R1   = (Norm.getValV() )*frac/delta_t;
+            TPaveLabel *t2 = new TPaveLabel(0.65,0.88-id*0.1,0.88,0.80-id*0.1, Form("R_{%i} = %.2f Hz", id, R1), "brNDC"); 
+            spec_full_frame -> addObject(t2);
         }
+        
+
         esum.plotOn(Eframe,Components(bg),LineColor(kGreen),LineWidth(2));
         esum.plotOn(spec_full_frame,Components(bg),LineColor(kGreen),LineWidth(2));
 
@@ -464,14 +513,15 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         //     c1->SaveAs(plotpath);//joranchange
         // }   
         // option 2:
-        c1->SaveAs(plotpath);
+        if(int(TIME_INTERVAL)==int(delta_t)) c1->SaveAs(plotpath);
         
         c1->Clear();
 
         //int huh;
         //cin>>huh;
-
-        processFitData(Norm,*pk_frac[id],*pk_mean[id],*pk_sigma[id], ichannel,peak_id[id], chindf);
+        for (int id=0; id<nselect; id++){         
+            if(int(TIME_INTERVAL)==int(delta_t)) processFitData(Norm,*pk_frac[id],*pk_mean[id],*pk_sigma[id], ichannel,peak_id[id], chindf);
+        }        
 
     }
     //
@@ -560,7 +610,7 @@ void analyzer::fit_spectrum_background(int ichannel, double *fit_range){
         cout << Eres_frame->chiSquare() <<endl;
         
         Double_t chindf2 = Eres_frame->chiSquare() ;
-        processFitData_BackGround(Norm, ichannel, chindf2);
+        if(int(TIME_INTERVAL)==int(delta_t)) processFitData_BackGround(Norm, ichannel, chindf2);
     }
     // ============================
     
@@ -629,10 +679,13 @@ void analyzer::fit_spectrum_background(int ichannel, double *fit_range){
         
         // chindf -> paramOn(Eframe, Layout(0.55,0.08,0.85-id*0.15));
         TPaveLabel *t0 = new TPaveLabel(0.1,1.0,0.9,0.9, Form("%s", run.c_str()), "brNDC"); 
-        TPaveLabel *t1 = new TPaveLabel(0.1,0.88,0.3,0.80, Form("#chi^{2} = %.3f", chindf), "brNDC"); 
+        TPaveLabel *t1 = new TPaveLabel(0.1,0.88,0.3,0.80, Form("#chi^{2} = %.2f", chindf), "brNDC"); 
         Eframe -> addObject(t0);
         Eframe -> addObject(t1);
-          
+        Double_t R1   = (Norm.getValV() )/delta_t;
+        TPaveLabel *t2 = new TPaveLabel(0.65,0.88,0.88,0.80, Form("R = %.2f Hz", R1), "brNDC"); 
+        spec_full_frame -> addObject(t2);
+
         spec_full_frame->GetXaxis()->SetRangeUser(0,3000);
         data.plotOn(spec_full_frame);
         esum.plotOn(spec_full_frame);
@@ -648,17 +701,17 @@ void analyzer::fit_spectrum_background(int ichannel, double *fit_range){
         sprintf(plotpath, "/dcache/xenon/jorana/Modulation/anaplots_temp/chan%i/E%i/%sch%i_E%i_%i_num%i.png",int(ichannel),int (fit_range[0]), run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int(jcounter)); //joranchange
         
         c1->Divide(2,2) ;
-        c1->cd(1) ; gPad->SetLogy();Eframe->SetMaximum(HOURS*100000); Eframe->SetMinimum(1); gPad->SetBottomMargin(0.15) ; Eframe->GetYaxis()->SetTitleOffset(1.1) ; Eframe->Draw() ;
-        c1->cd(3) ; gPad->SetBottomMargin(0.15) ; hpull_frame->SetMaximum(sqrt(HOURS)*10); hpull_frame->SetMinimum(-10*sqrt(HOURS)); hpull_frame->GetYaxis()->SetTitleOffset(1.1) ; hpull_frame->Draw() ;
-        c1->cd(2) ; gPad->SetLogy();spec_full_frame->SetMaximum(HOURS*100000); spec_full_frame->SetMinimum(1); gPad->SetBottomMargin(0.15) ; spec_full_frame->GetYaxis()->SetTitleOffset(1.1) ; spec_full_frame->Draw() ;
-        c1->cd(4) ; pull_dis->Fit("gaus"); gStyle->SetOptFit(0111); pull_dis->SetMinimum(0); pull_dis->SetMaximum(((fit_range[1]-fit_range[0])/5)/10);pull_dis->Draw("E1") ;
+        c1->cd(1) ; gPad->SetLogy();Eframe->SetMaximum(HOURS*1000); Eframe->SetMinimum(1); gPad->SetBottomMargin(0.15) ; Eframe->GetYaxis()->SetTitleOffset(1.1) ; Eframe->Draw() ;
+        c1->cd(3) ; gPad->SetBottomMargin(0.15) ; hpull_frame->SetMaximum(sqrt(HOURS)*10); hpull_frame->SetMinimum(-10*sqrt(HOURS)); hpull_frame->GetYaxis()->SetTitleOffset(1.1) ;        hpull_frame->Draw() ;
+        c1->cd(2) ; gPad->SetLogy();spec_full_frame->SetMaximum(HOURS*1000); spec_full_frame->SetMinimum(1); gPad->SetBottomMargin(0.15) ; spec_full_frame->GetYaxis()->SetTitleOffset(1.1) ; spec_full_frame->Draw() ;
+        c1->cd(4) ; pull_dis->Fit("gaus"); gStyle->SetOptFit(0111); pull_dis->SetMinimum(0); pull_dis->SetMaximum(((fit_range[1]-fit_range[0])/5));pull_dis->Draw("E1") ;
         // Either take only the first 12 or all plots
         // // option 1:
         // if(jcounter < 13){ // This means we only want to store the plots that are made for the first root file (more rootfiles follow)
         //     c1->SaveAs(plotpath);//joranchange
         // }   
         // // option 2:
-        c1->SaveAs(plotpath);
+        if(int(TIME_INTERVAL)==int(delta_t)) c1->SaveAs(plotpath);
 
         c1->Clear();
 
@@ -666,7 +719,7 @@ void analyzer::fit_spectrum_background(int ichannel, double *fit_range){
         //cin>>huh;
 
         // processFitData(Norm,*pk_frac[id],*pk_mean[id],*pk_sigma[id], ichannel,peak_id[id], chindf);
-        processFitData_BackGround(Norm, ichannel, chindf);
+        if(int(TIME_INTERVAL)==int(delta_t)) processFitData_BackGround(Norm, ichannel, chindf);
 
     }
     //

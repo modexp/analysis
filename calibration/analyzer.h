@@ -13,9 +13,9 @@
 #include <iostream>
 
 /*----------------------------------------------------------------------------*/
-#define HOURS 12
+#define HOURS 1
 #define TIME_INTERVAL HOURS*3600
-#define FIT_BG_TEMPLATE 1 //joranchange
+#define FIT_BG_TEMPLATE 0 //joranchange
 #define PLOT_ON_SCREEN 1//joranchange
 
 /*----------------------------------------------------------------------------*/

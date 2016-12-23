@@ -29,7 +29,7 @@
 // (2) Set range_low and range_high to find the range in which the peak with cal_energy should be
 
 //                                           CH0       CH1         CH2         CH3       CH4    CH5    CH6    CH7
-const double range_low[NUMBER_OF_CHANNELS] ={0.16e-6 , 0.13e-6   , 0.05e-6   , 0.05e-6 , 0.   , 0.   , 0.   , 0.  };
+const double range_low[NUMBER_OF_CHANNELS] ={0.16e-6 , 0.137e-6  , 0.05e-6   , 0.05e-6 , 0.   , 0.   , 0.   , 0.  };
 const double range_high[NUMBER_OF_CHANNELS]={1e-6    , 1e-6      , 1e-6      , 1e-6    , 1e-6 , 1e-6 , 1e-6 , 1e6 };
 
 // const double range_low[NUMBER_OF_CHANNELS] ={0.4e-6 , 0.14e-6   , 0.05e-6   , 0.05e-6 , 0.   , 0.   , 0.   , 0.  };
@@ -72,7 +72,11 @@ void ecal::book_histograms(){
     char tmp[100];
     for (int ich = 0; ich <NUMBER_OF_CHANNELS; ich++){
         sprintf(tmp,"integral_ch%02d",ich);
-        _integral.push_back(new TH1F(tmp,tmp,1000,0.,1e-6));
+        if (ich == 1){
+            _integral.push_back(new TH1F(tmp,tmp,1000,0.,1e-6));
+            } else{
+            _integral.push_back(new TH1F(tmp,tmp,1000,0.,1e-6));
+        }
         //
         // plots are only meaningfull if CALIBRATION_MODE==0
         //
