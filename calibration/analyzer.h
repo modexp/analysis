@@ -15,8 +15,8 @@
 /*----------------------------------------------------------------------------*/
 #define HOURS 1
 #define TIME_INTERVAL HOURS*3600
-#define FIT_BG_TEMPLATE 0 //joranchange
-#define PLOT_ON_SCREEN 1//joranchange
+#define FIT_BG_TEMPLATE 1 //joranchange
+#define PLOT_ON_SCREEN 1 //joranchange
 
 /*----------------------------------------------------------------------------*/
 #define NUMBER_OF_CHANNELS 8
@@ -125,8 +125,8 @@ class analyzer {
     void fit_spectrum_simple(int ichannel);
     void fit_spectrum(int ichannel, double *fit_range);
     void fit_spectrum_background(int ichannel, double *fit_range);
-    void addTreeEntry(Double_t E, Double_t R, Double_t dR, Double_t res, Int_t ich, Int_t ipk, Double_t fractry, Double_t chindf);
-    void processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealVar sig, int ichannel, int ipeak, Double_t chi2);
+    void addTreeEntry(Double_t E, Double_t R, Double_t dR, Double_t res, Int_t ich, Int_t ipk, Double_t fractry, Double_t chindf, Double_t bg_rate, Double_t bg_drate);
+    void processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealVar sig, int ichannel, int ipeak, Double_t chi2, RooRealVar bg_f);
     void processFitData_BackGround(RooRealVar N, int ichannel, Double_t chi2ndfs);
     void get_source_id();
     
@@ -146,6 +146,8 @@ class analyzer {
     Int_t       _t_peakNum;
     Double_t    _t_rate;
     Double_t    _t_drate;
+    Double_t    _t_bg_rate;
+    Double_t    _t_bg_drate;
     Double_t    _t_energy;
     Double_t    _t_res;
     Double_t    _t_temp;

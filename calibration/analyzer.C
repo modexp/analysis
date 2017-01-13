@@ -14,7 +14,7 @@
 // To set the time interval in which a spectrum is calculated, in analyzer.h set:
 // #define TIME_INTERVAL <interval_in_seconds>
 //
-// A.P.
+// A.P. Colijn
 /*---------------------------------------------------------------------------------------------------*/
 #include "analyzer.h"
 // RooFit include files
@@ -296,7 +296,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         sprintf(vname,"sigma%i",isel);
         pk_sigma.push_back(new RooRealVar(vname,vname,25,5,100));
         sprintf(vname,"frac%i",isel);
-        pk_frac.push_back(new RooRealVar(vname,vname,0.3,0.0,1.0));
+        pk_frac.push_back(new RooRealVar(vname,vname,0.3,0.0,1.0)); // change 0.3 1 - expected compton - expected background
         
         sprintf(vname,"gaus%i",isel);
         pk_gaus.push_back(new RooGaussian(vname,vname,E,*pk_mean[isel],*pk_sigma[isel]));
@@ -374,7 +374,9 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
             cout << Eres_frame->chiSquare() <<endl;
             
             Double_t chindf2 = Eres_frame->chiSquare() ;
-            if(int(TIME_INTERVAL)==int(delta_t)) processFitData(Norm,*pk_frac[id],*pk_mean[id],*pk_sigma[id], ichannel,peak_id[id], chindf2);
+            if(int(TIME_INTERVAL)==int(delta_t)) processFitData(Norm,*pk_frac[id],*pk_mean[id],*pk_sigma[id], ichannel, peak_id[id], chindf2, *ch0ch1_frac[0]);
+            
+            // if(int(TIME_INTERVAL)==int(delta_t)) processFitData(Norm,*pk_frac[id],*pk_mean[id],*pk_sigma[id], ichannel, peak_id[id], chindf2);
         }
     }
     //============================
@@ -500,13 +502,14 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         // sprintf(plotpath, "/user/jorana/ana_plots/%sch%i_E%i_%i_%i.png", run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int (jcounter)); //joranchange
         // sprintf(plotpath, "/data/xenon/joranang/plots28nov/%sch%i_E%i_%i_%i.png", run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int (jcounter));
 
-        sprintf(plotpath, "/dcache/xenon/jorana/Modulation/anaplots_temp/chan%i/E%i/%sch%i_E%i_%i_num%i.png",int(ichannel),int (fit_range[0]), run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int(jcounter)); //joranchange
+        // sprintf(plotpath, "/dcache/xenon/jorana/Modulation/anaplots_temp/chan%i/E%i/%sch%i_E%i_%i_num%i.png",int(ichannel),int (fit_range[0]), run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int(jcounter)); //joranchange
+        sprintf(plotpath, "/data/xenon/joranang/anaplots_temp/chan%i/E%i/%sch%i_E%i_%i_num%i.png",int(ichannel),int (fit_range[0]), run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int(jcounter)); //joranchange
         
         c1->Divide(2,2) ;
         c1->cd(1) ; gPad->SetLogy();Eframe->SetMaximum(100000*HOURS); Eframe->SetMinimum(1); gPad->SetBottomMargin(0.15) ; Eframe->GetYaxis()->SetTitleOffset(1.1) ; Eframe->Draw() ;
         c1->cd(2) ; gPad->SetLogy();spec_full_frame->SetMaximum(100000*HOURS); spec_full_frame->SetMinimum(1); gPad->SetBottomMargin(0.15) ; spec_full_frame->GetYaxis()->SetTitleOffset(1.1) ; spec_full_frame->Draw() ;
         c1->cd(3) ; gPad->SetBottomMargin(0.15) ; hpull_frame->SetMaximum(10*sqrt(HOURS)); hpull_frame->SetMinimum(-10*sqrt(HOURS)); hpull_frame->GetYaxis()->SetTitleOffset(1.1) ; hpull_frame->Draw() ;        
-        c1->cd(4) ; pull_dis->Fit("gaus"); gStyle->SetOptFit(0110); pull_dis->SetMinimum(0); pull_dis->SetMaximum(((fit_range[1]-fit_range[0])/5));pull_dis->Draw("E1")  ;
+        c1->cd(4) ; pull_dis->Fit("gaus", "Q"); gStyle->SetOptFit(0110); pull_dis->SetMinimum(0); pull_dis->SetMaximum(((fit_range[1]-fit_range[0])/5));pull_dis->Draw("E1")  ;
         // Either take only the first 12 or all plots
         // option 1:
         // if(jcounter < 13){ // This means we only want to store the plots that are made for the first root file (more rootfiles follow)
@@ -516,13 +519,15 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         if(int(TIME_INTERVAL)==int(delta_t)) c1->SaveAs(plotpath);
         
         c1->Clear();
+        pull_dis -> Delete(); 
 
         //int huh;
         //cin>>huh;
         for (int id=0; id<nselect; id++){         
-            if(int(TIME_INTERVAL)==int(delta_t)) processFitData(Norm,*pk_frac[id],*pk_mean[id],*pk_sigma[id], ichannel,peak_id[id], chindf);
+            // if(int(TIME_INTERVAL)==int(delta_t)) processFitData(Norm,*pk_frac[id],*pk_mean[id],*pk_sigma[id], ichannel, peak_id[id], chindf);
+            if(int(TIME_INTERVAL)==int(delta_t)) processFitData(Norm,*pk_frac[id],*pk_mean[id],*pk_sigma[id], ichannel, peak_id[id], chindf, *ch0ch1_frac[0]);
         }        
-
+        
     }
     //
     // cleanup
@@ -698,13 +703,14 @@ void analyzer::fit_spectrum_background(int ichannel, double *fit_range){
         char plotpath[128];
         // sprintf(plotpath, "/user/jorana/ana_plots/%sch%i_E%i_%i_%i.png", run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int (jcounter)); //joranchange
         // sprintf(plotpath, "/data/xenon/joranang/plots28nov/%sch%i_E%i_%i_%i.png", run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int (jcounter));
-        sprintf(plotpath, "/dcache/xenon/jorana/Modulation/anaplots_temp/chan%i/E%i/%sch%i_E%i_%i_num%i.png",int(ichannel),int (fit_range[0]), run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int(jcounter)); //joranchange
+        // sprintf(plotpath, "/dcache/xenon/jorana/Modulation/anaplots_temp/chan%i/E%i/%sch%i_E%i_%i_num%i.png",int(ichannel),int (fit_range[0]), run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int(jcounter)); //joranchange
+        sprintf(plotpath, "/data/xenon/joranang/anaplots_temp/chan%i/E%i/%sch%i_E%i_%i_num%i.png",int(ichannel),int (fit_range[0]), run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int(jcounter)); //joranchange
         
         c1->Divide(2,2) ;
         c1->cd(1) ; gPad->SetLogy();Eframe->SetMaximum(HOURS*1000); Eframe->SetMinimum(1); gPad->SetBottomMargin(0.15) ; Eframe->GetYaxis()->SetTitleOffset(1.1) ; Eframe->Draw() ;
         c1->cd(3) ; gPad->SetBottomMargin(0.15) ; hpull_frame->SetMaximum(sqrt(HOURS)*10); hpull_frame->SetMinimum(-10*sqrt(HOURS)); hpull_frame->GetYaxis()->SetTitleOffset(1.1) ;        hpull_frame->Draw() ;
         c1->cd(2) ; gPad->SetLogy();spec_full_frame->SetMaximum(HOURS*1000); spec_full_frame->SetMinimum(1); gPad->SetBottomMargin(0.15) ; spec_full_frame->GetYaxis()->SetTitleOffset(1.1) ; spec_full_frame->Draw() ;
-        c1->cd(4) ; pull_dis->Fit("gaus"); gStyle->SetOptFit(0111); pull_dis->SetMinimum(0); pull_dis->SetMaximum(((fit_range[1]-fit_range[0])/5));pull_dis->Draw("E1") ;
+        c1->cd(4) ; pull_dis->Fit("gaus", "Q"); gStyle->SetOptFit(0111); pull_dis->SetMinimum(0); pull_dis->SetMaximum(((fit_range[1]-fit_range[0])/5));pull_dis->Draw("E1") ;
         // Either take only the first 12 or all plots
         // // option 1:
         // if(jcounter < 13){ // This means we only want to store the plots that are made for the first root file (more rootfiles follow)
@@ -714,6 +720,7 @@ void analyzer::fit_spectrum_background(int ichannel, double *fit_range){
         if(int(TIME_INTERVAL)==int(delta_t)) c1->SaveAs(plotpath);
 
         c1->Clear();
+        pull_dis -> Delete(); 
 
         //int huh;
         //cin>>huh;
@@ -843,10 +850,10 @@ void analyzer::fit_spectrum(int ichannel){
     //
     // process the variables to rates
     //
-    processFitData(Norm,g1frac,mean1,sigma1,ichannel,0, 99 ); //last zero is chindf
+    processFitData(Norm,g1frac,mean1,sigma1,ichannel,0, 99, g1frac ); //last 99 is chindf and last g1frac should be ignored
     if(ichannel == 2 || ichannel ==3 || ichannel ==4 || ichannel == 5){
-        processFitData(Norm,g2frac,mean2,sigma2,ichannel,1, 99);//last zero is chindf
-        processFitData(Norm,g3frac,mean3,sigma3,ichannel,2, 99);//last zero is chindf
+        processFitData(Norm,g2frac,mean2,sigma2,ichannel,1, 99, g1frac);//last 99 is chindf and last g1frac should be ignored
+        processFitData(Norm,g3frac,mean3,sigma3,ichannel,2, 99, g1frac);//last 99 is chindf and last g1frac should be ignored
     }
     //
     // cleanup
@@ -868,16 +875,17 @@ void analyzer::processFitData_BackGround(RooRealVar N, int ichannel, Double_t ch
     dR1 = sqrt(dR1)/delta_t;
     
     cout <<ichannel<<" "<<" "<<" "<<" R = "<<R1<<" +- "<<dR1<<endl;
-    addTreeEntry(0,R1,dR1,0,ichannel,0, 1, chi2s); //Joranadded ',fractry1'
+    addTreeEntry(0,R1,dR1,0,ichannel,0, 1, chi2s, 0.0, 1.0); //Joranadded ',fractry1'
 }
 /*----------------------------------------------------------------------------------------------------*/
-void analyzer::processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealVar sig, int ichannel, int ipeak, Double_t chi2ndfs){
+void analyzer::processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealVar sig, int ichannel, int ipeak, Double_t chi2ndfs, RooRealVar bg_f){
     //
     // process the fit data in order to get the rate with errors etc into the ntuple
     //
     Double_t E1   = E.getValV();
     Double_t Norm = N.getValV();
     Double_t frac = f.getValV();
+    
     Double_t chi2s = chi2ndfs;
     //    Double_t R1   = Norm*frac/TIME_INTERVAL;
     Double_t R1   = Norm*frac/delta_t;
@@ -899,13 +907,29 @@ void analyzer::processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealV
     string fName = f.GetName();
 
     //    cout <<">>"<<fName<<"<<"<<endl;
+
     if        (fName == "frac0") {
-        idx = 1+FIT_BG_TEMPLATE;
+        idx = 1;
     } else if (fName == "frac1"){
-        idx = 2+FIT_BG_TEMPLATE;
+        idx = 2;
     } else if (fName == "frac2"){
-        idx = 3+FIT_BG_TEMPLATE;
+        idx = 3;
     }
+
+    Double_t bg_R  = 0;
+    Double_t bg_dR = 1; 
+    if (FIT_BG_TEMPLATE){
+        Double_t bg_frac = bg_f.getValV();
+        bg_R = Norm * bg_frac / delta_t ;
+        bg_dR = Norm * Norm * covariance(1, 1);
+        bg_dR += 2 * Norm * bg_frac * covariance(1, 0);
+        bg_dR +=  bg_frac * bg_frac * covariance(0, 0);
+        bg_dR = sqrt(bg_dR) / delta_t;
+        cout << "got here"<<bg_frac<<bg_R<<" +/- "<<bg_dR<<endl;
+        // Since there is one extra item in the covariance matrix (the BG fraction) the proper covariance is one index lower.
+        idx = idx + 1;
+    }
+
     //   cout <<" cov00 = "<<covariance(0,0)<<" cov01 = "<<covariance(idx,0)<<" cov11 = "<<covariance(idx,idx)<<endl;
     Double_t dR1 = Norm*Norm*covariance(idx,idx);
     dR1 += 2*Norm*frac*covariance(idx,0);
@@ -914,24 +938,35 @@ void analyzer::processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealV
     //
     // calculate error on the rate
     //
+
+    
+
+
     Double_t res  = 2.355*sig.getValV()/E1;
     Double_t fractry1 = frac; //joranadd
-    cout <<ichannel<<" "<<ipeak<<" "<<E1<<" "<<res<<" R = "<<R1<<" +- "<<dR1<<endl;
-    addTreeEntry(E1,R1,dR1,res,ichannel,ipeak, fractry1, chi2s); //Joranadded ',fractry1'
+    cout <<ichannel<<" "<<ipeak<<" "<<E1<<" "<<res<<" R = "<<R1<<" +- "<<dR1<<"  BG"<<bg_R<<"+/-"<< bg_dR<<endl;
+    // if (FIT_BG_TEMPLATE){
+    addTreeEntry(E1, R1, dR1, res, ichannel, ipeak, fractry1, chi2s, bg_R, bg_dR);
+    // } else{
+    //     addTreeEntry(E1, R1, dR1, res, ichannel, ipeak, fractry1, chi2s, 0., 1.);
+    //     } //Joranadded ',fractry1'
     cout << "analyzer::processFitData -- Done" << endl;
+    
 }
 
 /*----------------------------------------------------------------------------------------------------*/
-void analyzer::addTreeEntry(Double_t E, Double_t R, Double_t dR, Double_t res, Int_t ich, Int_t ipk, Double_t fractry, Double_t chindfin){
+void analyzer::addTreeEntry(Double_t E, Double_t R, Double_t dR, Double_t res, Int_t ich, Int_t ipk, Double_t fractry, Double_t chindfin, Double_t bg_rate, Double_t bg_drate){
     //
     // fill the tree with the fit results.
     //
     // the slow data are processed elsewhere, but are also entering this tree:)
     //
-    _t_energy = E;
-    _t_rate   = R;
-    _t_drate  = dR;
-    _t_res    = res;
+    _t_energy  = E;
+    _t_rate    = R;
+    _t_bg_rate = bg_rate;
+    _t_drate   = dR;
+    _t_bg_drate= bg_drate;
+    _t_res     = res;
     _t_chanNum = ich;
     _t_peakNum = ipk;
     _t_fractry = fractry;
@@ -939,6 +974,7 @@ void analyzer::addTreeEntry(Double_t E, Double_t R, Double_t dR, Double_t res, I
     
     // this should be the only place where the fill command is called
     tree->Fill();
+    
 }
 /*----------------------------------------------------------------------------------------------------*/
 double analyzer::covariance(int i, int j){
@@ -1000,6 +1036,8 @@ void analyzer::book_histograms(){
     tree->Branch("peak", &_t_peakNum, "peak/I");
     tree->Branch("rate", &_t_rate, "rate/D");
     tree->Branch("drate", &_t_drate, "drate/D");
+    tree->Branch("bgrate", &_t_bg_rate, "bg_rate/D");
+    tree->Branch("bgdrate", &_t_bg_drate, "bg_drate/D");
     tree->Branch("e", &_t_energy, "e/D");
     tree->Branch("res", &_t_res, "res/D");
     tree->Branch("temp", &_t_temp, "temp/D");
@@ -1086,11 +1124,13 @@ void analyzer::get_interval_data(){
             if        (id == TI44) {
                 range[0] = 400; range[1] = 700;
                 fit_spectrum(ich, range);
-                range[0] = 1000; range[1] = 1300;
+                // range[0] = 1000; range[1] = 1300;
+                range[0] = 1000; range[1] = 1400;
                 fit_spectrum(ich, range);
                 range[0] = 1500; range[1] = 2400;
                 fit_spectrum(ich, range);
             } else if (id == CO60 ) {
+                
 // //                range[0] = 700;
 // //                range[1] = 2800;
 // //                fit_spectrum(ich,range);
@@ -1241,7 +1281,7 @@ void analyzer::fit_spectrum_simple(int ichannel){
             <<" E = "<<_t_energy<<" keV  rate = "<<_t_rate<<" Hz  resolution  = "<<_t_res<<" % "<<endl;
             
             // fille the output tree.....
-            addTreeEntry(_t_energy,_t_rate,1.0,_t_res,ichannel,ipeak, _t_fractry, 0.0); //0 for chi2ndf
+            addTreeEntry(_t_energy,_t_rate,1.0,_t_res,ichannel,ipeak, _t_fractry, 0.0, 0.0, 1.0); //0 for chi2ndf, 0.0 for R_bg and 1.0 for dR_bg
             //            c1->Update();
             
             delete func;
