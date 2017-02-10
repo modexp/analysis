@@ -28,6 +28,7 @@
 #define PLOT_ON_SCREEN 1
 #define BEFORE_CALIBRATION 0
 #define AFTER_CALIBRATION 1
+#define SUBTRACT_EXP 1
 
 //
 // CALIBRATION_MODE 0 = one calibration for full run

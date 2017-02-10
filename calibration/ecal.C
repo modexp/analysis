@@ -29,7 +29,8 @@
 // (2) Set range_low and range_high to find the range in which the peak with cal_energy should be
 
 //                                           CH0       CH1         CH2         CH3       CH4    CH5    CH6    CH7
-const double range_low[NUMBER_OF_CHANNELS] ={0.16e-6 , 0.137e-6  , 0.05e-6   , 0.05e-6 , 0.   , 0.   , 0.   , 0.  };
+// const double range_low[NUMBER_OF_CHANNELS] ={0.16e-6 , 0.137e-6  , 0.05e-6   , 0.05e-6 , 0.   , 0.   , 0.   , 0.  };
+const double range_low[NUMBER_OF_CHANNELS] ={0.15e-6 , 0.13e-6  , 0.05e-6   , 0.05e-6 , 0.   , 0.   , 0.   , 0.  };
 const double range_high[NUMBER_OF_CHANNELS]={1e-6    , 1e-6      , 1e-6      , 1e-6    , 1e-6 , 1e-6 , 1e-6 , 1e6 };
 
 // const double range_low[NUMBER_OF_CHANNELS] ={0.4e-6 , 0.14e-6   , 0.05e-6   , 0.05e-6 , 0.   , 0.   , 0.   , 0.  };
@@ -41,7 +42,8 @@ float source_energy[NUMBER_OF_SOURCES][MAX_PEAKS] =
 // the energy peaks you wish to select for the calibration should be in this list
 //
 {
-    {1460., 2614.5, -1,-1,-1},                 // ID0: Background
+    {1460., -1, -1,-1,-1},           // ID0: Background
+    // {1460., -1, -1,-1,-1},               // ID0: Background
     {511.,1157.020,511.+1157.020,-1,-1}, // ID1: Ti44
     {1173.2,1332.5,1173.2+1332.5,-1,-1}, // ID2: Co60
     {661.7,-1,-1,-1,-1},                 // ID3: CS137
@@ -58,6 +60,17 @@ Double_t fitf_gauss(Double_t *v, Double_t *par)
     Double_t fitval = par[0]*TMath::Exp(-0.5*arg*arg);
     
     fitval += par[3]+par[4]*v[0];
+    
+    return fitval;
+}
+
+Double_t fitf_exp(Double_t *v, Double_t *par)
+{
+    Double_t arg = -(v[0]) * par[1];
+    
+    Double_t fitval = par[0] * TMath::Exp(arg);
+    
+    // fitval += par[3];
     
     return fitval;
 }
@@ -421,7 +434,7 @@ void ecal::do_calibration(){
             for (int i=0; i<MAX_PEAKS; i++){
                 if(source_energy[id][i]>0) npeak++;
             }
-            
+
             /// if(npeak == 0){ // no calibration possible ..... E = 1.0*integral.
             // if the calibration fails I want a simple linear realtion between integral and energy
             /// }
@@ -430,10 +443,58 @@ void ecal::do_calibration(){
             // define the proper range for searching the calibration constant
             _integral[ich]->GetXaxis()->SetRangeUser(range_low[ich],range_high[ich]);
             // find the bin with maximum value in the range
-            int ibin      = _integral[ich]->GetMaximumBin();
+            int ibin      = _integral[ich]->GetMaximumBin();      
             double val    = _integral[ich]->GetBinCenter(ibin);
-            double maxval = _integral[ich]->GetBinContent(ibin);
-            
+            double maxval = _integral[ich]->GetBinContent(ibin);     
+
+            // Here I'm trying to subtract an exponential jorana@nikhef.nl
+            if(SUBTRACT_EXP && ich < 2){
+                cout<<"do_calibration:: subtracting exponent"<<endl;
+                TF1 *exp_func = new TF1("fitexp", fitf_exp, range_low[ich], range_high[ich], 2);
+                Double_t amp = _integral[ich]->GetMaximumBin();
+                Double_t pow = 1e7;
+                // Double_t e0  = 0.;
+                // Double_t baselin = 0;
+                // exp_func->SetParameters(amp, pow, baselin);
+                // exp_func->SetParNames("amplitude","power","baseline");
+                exp_func->SetParameters(amp, pow);
+                exp_func->SetParNames("amplitude","power");
+                exp_func->SetParLimits(0, 0.0, 5 * amp);
+                // exp_func->SetParLimits(1, 0.0, 100);
+                // exp_func->SetParLimits(2, -range_high[ich], range_high[ich]);
+                // exp_func->SetParLimits(2, 0, amp);
+                _integral[ich]->Fit("fitexp","Q","",range_low[ich], range_high[ich]);
+                amp = exp_func->GetParameter(0);   
+                pow = exp_func->GetParameter(1); 
+                // e0  = exp_func->GetParameter(2); 
+                // baselin = exp_func->GetParameter(2); 
+                cout<<"do_calibration:: fitting done we have A, b, C = "<< amp <<" "<< pow <<" "<< "" <<" " << ""<<endl;
+
+                cout<<"do_calibration:: Change bincontent "<<endl;
+                TH1F *temp_integral  = (TH1F*)_integral[ich] -> Clone("temp_integral");
+                for (int bin = 1; bin < _integral[ich] -> GetNbinsX(); bin++){                    
+                    Double_t bin_center  = _integral[ich]-> GetBinCenter(bin);
+                    Double_t bin_content = _integral[ich]-> GetBinContent(bin);
+                    Double_t bin_fitted  = (amp * TMath::Exp(- pow * bin_center) );
+                    // Double_t bin_fitted  = (amp * TMath::Exp(- pow * bin_center) - baseline);
+                    Double_t bin_setvalue= bin_content - bin_fitted;
+                    temp_integral -> SetBinContent(bin, bin_setvalue);
+                    _integral[ich] -> SetBinContent(bin, bin_setvalue);
+                }   
+                cout << "do_calibration:: ibin was " << ibin <<endl;
+                ibin   = temp_integral -> GetMaximumBin();
+                cout << "do_calibration:: ibin is  1 " << ibin <<endl;
+                temp_integral -> Smooth(3);
+                ibin   = temp_integral -> GetMaximumBin();
+                cout << "do_calibration:: ibin is  2c " << ibin <<endl;
+                val    = temp_integral-> GetBinCenter(ibin);
+                maxval = temp_integral-> GetBinContent(ibin);
+                exp_func -> Delete();
+                temp_integral -> Delete();
+            } 
+            // end subtracting 
+
+           
             
             Double_t ee[MAX_PEAKS];
             Double_t dee[MAX_PEAKS];
@@ -458,12 +519,16 @@ void ecal::do_calibration(){
                 vlow  = val - 5*sig_expected;//0.025e-6;
                 vhigh = val + 5*sig_expected;//0.025e-6;
                 
-                if(ich == 4 || ich ==5){
+                if(ich == 4 || ich == 5){
                     if(ipeak == 0 ) {
                         vhigh = val+3*sig_expected;//0.015e-6;
                     }
                     if(ipeak == 1 ) vlow  = val-3*sig_expected;//0.015e-6;
                 }
+
+                // if(ich == 0 || ich == 1){
+                //     if(ipeak == 0 ) vlow = val - 3 * sig_expected;//0.015e-6;
+                // }
                 
                 //
                 // fit a Gauss around the desired location in the spectrum
@@ -524,7 +589,6 @@ void ecal::do_calibration(){
                 ccal[ich][0] = -v0/v1;
                 ccal[ich][1] = 1/v1;
                 ccal[ich][2] = 0;
-                
                 
                 // // // TEST TEST 2ND order polynomial - errors are bad...... but representative
                 ////TGraphErrors *gcal2 = new TGraphErrors(npeak,Vs_peak,ee,0,dVs_peak);

@@ -73,7 +73,7 @@ const float emin = 0.; // in keV
 const float emax = 3000.; // in keV
 const float adc_max_volt = 2.;
 const float base_max_val = 2000;
-const float time_template= 970303.582632; // This time is reported in the report produced by the template builder (it is the ammount of time over which the data is taken to create the BG templates)
+// const float time_template= 970303.582632; // This time is reported in the report produced by the template builder (it is the ammount of time over which the data is taken to create the BG templates)
 
 
 /*----------------------------------------------------------------------------------------------------*/
@@ -130,6 +130,18 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
     // get the data from a TH1 root histogram
     //
     RooDataHist data("data","data",RooArgList(E),(TH1*)_pk_tmp[ichannel]);
+    // TH1F *hdata = new TH1F("h","demo quantiles",(emax-emin)/5,emin,emax);
+
+    // for(int i = 0; i<(emax-emin)/5;i++){
+    //     Double_t xs = emin + 5 * i;
+    //     Double_t sigma = 20;
+    //     Double_t arg = (xs - source_energy[id][0])/sigma;        
+    //     Double_t fitval = TMath::Exp(-0.5*arg*arg);
+    //     fitval = delta_t *  5 * 1e5 * fitval / (sigma * 2.50663); //times time to get rate, times 5 for binwidth, put in 1e5 'events' devided to get analitical gaus
+    //     hdata-> SetBinContent(i, fitval);
+    // }
+    // nselect = 1;
+    // RooDataHist data("data","data",RooArgList(E),(TH1*)hdata);
     
     //
     // the background template for each of the sources obtained from a GEANT4 simulation
@@ -171,11 +183,14 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
     cout <<"fit_spectrum:: channel = "<<ichannel<<" source_id = "<<id<<" BG template ="<<ch0ch1_file<<endl;
 
     TFile *f_ch0ch1 = new TFile(ch0ch1_file.c_str(),"READONLY");
-    TH1* h_ch0ch1  = (TH1*)f_ch0ch1->Get("ch0");  
+    
+    TH1* h_time  = (TH1*)f_ch0ch1->Get("time");
+    double time_template = h_time->GetBinContent(1);
 
     //
     // construct the background pdf
     //
+    TH1* h_ch0ch1  = (TH1*)f_ch0ch1->Get("ch0");  
     RooDataHist mc2("mc2","mc2",RooArgList(E), h_ch0ch1);
     f_ch0ch1->Close();
 
@@ -186,13 +201,13 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
     cout <<"fit_spectrum:: channel = "<<ichannel<<" source_id = "<<id<<" BG template ="<<ch1_file<<endl;
 
     TFile *f_ch1 = new TFile(ch1_file.c_str(),"READONLY");
-    TH1* h_ch1  = (TH1*)f_ch1->Get("ch1");  
+    TH1* h_ch1   = (TH1*)f_ch1->Get("ch1");  
+    
 
-    //
-    // construct the background pdf
-    //
     RooDataHist mc3("mc3","mc3",RooArgList(E), h_ch1);
     f_ch1->Close();
+
+
 
 
     RooHistPdf bg_ch0ch1("bg_ch0ch1","bg_ch0ch1", E, mc2, 0);
@@ -258,6 +273,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
     double dbg_frac = abs(bg_frac - bg_frac3);
     // bg_frac * sqrt( pow((devents_mc2 / events_mc2), 2) + pow((devents_data / events_data), 2));
     cout << "Expected fraction of BG = " << bg_frac << "+/-" << dbg_frac << endl;
+    cout << "Time template" << time_template << endl;
     cout << "Total events in interval are: data ="<< data_tot_events << " ch0 =" << mc2_tot_events <<" ch1 ="<< mc3_tot_events<<endl;
     cout << "Total events*time in interval are: data ="<< data_tot_events*delta_t << " ch0 =" << mc2_tot_events*delta_t <<" ch1 ="<< mc3_tot_events*delta_t<<endl;
 
@@ -268,7 +284,8 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
 
     // // A simple background fraction can also be used (as below)
     // ch0ch1_frac.push_back(new RooRealVar("ch0ch1","ch0ch1",0.07,0.001,0.50));
-    ch0ch1_frac.push_back(new RooRealVar("ch0ch1","ch0ch1", bg_frac, max(bg_frac - 10 * dbg_frac, 0.0), bg_frac + 10 * dbg_frac));
+    // ch0ch1_frac.push_back(new RooRealVar("ch0ch1","ch0ch1", bg_frac, max(bg_frac - 10 * dbg_frac, 0.0), bg_frac + 10 * dbg_frac));
+    ch0ch1_frac.push_back(new RooRealVar("ch0ch1","ch0ch1", bg_frac, 0.0, 1.0));
 
     // 
     //=====================================================================================================================
@@ -296,7 +313,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         sprintf(vname,"sigma%i",isel);
         pk_sigma.push_back(new RooRealVar(vname,vname,25,5,100));
         sprintf(vname,"frac%i",isel);
-        pk_frac.push_back(new RooRealVar(vname,vname,0.3,0.0,1.0)); // change 0.3 1 - expected compton - expected background
+        pk_frac.push_back(new RooRealVar(vname,vname,0.3- 0.1 * isel, 0.0,1.0)); // change 0.3 1 - expected compton - expected background
         
         sprintf(vname,"gaus%i",isel);
         pk_gaus.push_back(new RooGaussian(vname,vname,E,*pk_mean[isel],*pk_sigma[isel]));
@@ -333,7 +350,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         if (nselect==2)  sum = new RooAddPdf("sum","g1+g2+bg",RooArgList(*pk_gaus[0],*pk_gaus[1],bg),RooArgList(*pk_frac[0],*pk_frac[1]));
         if (nselect==3)  sum = new RooAddPdf("sum","g1+g2+g3+bg",RooArgList(*pk_gaus[0],*pk_gaus[1],*pk_gaus[2],bg),RooArgList(*pk_frac[0],*pk_frac[1],*pk_frac[2]));
     }
-    
+    // if (nselect==1)  sum = new RooAddPdf("sum","g1+bg_ch0ch1+bg",      RooArgList(*pk_gaus[0]), RooArgList(*pk_frac[0])); //joranchange
     
     cout <<"analyzer::fit_spectrum Compose the combined pdf ---- DONE "<<endl;
     
@@ -458,20 +475,23 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         hpull_frame->GetXaxis()->SetRangeUser(fit_range[0], fit_range[1]);
 
         RooPlot* spec_full_frame = E.frame(Title("Whole spectrum")) ;
-        // spec_full_frame->SetTitle("");
+        spec_full_frame->SetTitle("");
         spec_full_frame->GetXaxis()->SetRangeUser(0,3000);
         data.plotOn(spec_full_frame);
         esum.plotOn(spec_full_frame);
       
         // Show the chi2 and the run name on the first frame
-        TPaveLabel *t0 = new TPaveLabel(0.1,1.0,0.9,0.9, Form("%s", run.c_str()), "brNDC"); 
+        string runstr = run.substr (5,8);
+        TPaveLabel *t0 = new TPaveLabel(0.1,1.0,0.9,0.9, Form("%s", runstr.c_str()), "brNDC"); 
         TPaveLabel *t1 = new TPaveLabel(0.1,0.88,0.3,0.80, Form("#chi^{2} = %.2f", chindf), "brNDC"); 
         // Double_t frac = *pk_frac[id].getValV();
         // Double_t R1   = Norm*frac/delta_t;
         // R1 -> paramOn(Eframe,Layout(0.35,0.88,0.85-id*0.15));
         // TPaveLabel *t3 = new TPaveLabel(0.1,0.88,0.3,0.80, Form("#chi^{2} = %.3f", R1), "brNDC"); 
-        Eframe -> addObject(t0);
+        // Eframe -> addObject(t0);
         Eframe -> addObject(t1);
+        spec_full_frame -> addObject(t0);
+        // spec_full_frame -> addObject(t1);
 
         for (int id=0; id<nselect; id++){
             esum.plotOn(Eframe,Components(*pk_gaus[id]),LineColor(2),LineWidth(2));
@@ -485,6 +505,12 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
             TPaveLabel *t2 = new TPaveLabel(0.65,0.88-id*0.1,0.88,0.80-id*0.1, Form("R_{%i} = %.2f Hz", id, R1), "brNDC"); 
             spec_full_frame -> addObject(t2);
         }
+
+        Double_t bg_frac_fit=  ch0ch1_frac[0] -> getVal();
+        Double_t bg_R    = (Norm.getValV() )* bg_frac_fit / delta_t;
+        Double_t bg_R_exp= (Norm.getValV() )* bg_frac     / delta_t;
+        TPaveLabel *t3 = new TPaveLabel(0.65,0.88-nselect*0.1, 0.88, 0.80-nselect*0.1, Form("BG Rate fit = %.1f, expect = %.1f Hz", bg_R, bg_R_exp), "brNDC"); 
+        spec_full_frame -> addObject(t3);
         
 
         esum.plotOn(Eframe,Components(bg),LineColor(kGreen),LineWidth(2));
@@ -503,7 +529,8 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         // sprintf(plotpath, "/data/xenon/joranang/plots28nov/%sch%i_E%i_%i_%i.png", run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int (jcounter));
 
         // sprintf(plotpath, "/dcache/xenon/jorana/Modulation/anaplots_temp/chan%i/E%i/%sch%i_E%i_%i_num%i.png",int(ichannel),int (fit_range[0]), run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int(jcounter)); //joranchange
-        sprintf(plotpath, "/data/xenon/joranang/anaplots_temp/chan%i/E%i/%sch%i_E%i_%i_num%i.png",int(ichannel),int (fit_range[0]), run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int(jcounter)); //joranchange
+        sprintf(plotpath, "/data/xenon/joranang/anaplots_temp2/chan%i/E%i%sch%i_E%i_%i_num%i.png",int(ichannel),int (fit_range[0]), run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int(jcounter)); //joranchange
+        // sprintf(plotpath, "/data/xenon/joranang/anaplots_20170112/%sch%i_E%i_%i_num%i.png", run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int(jcounter)); //joranchange
         
         c1->Divide(2,2) ;
         c1->cd(1) ; gPad->SetLogy();Eframe->SetMaximum(100000*HOURS); Eframe->SetMinimum(1); gPad->SetBottomMargin(0.15) ; Eframe->GetYaxis()->SetTitleOffset(1.1) ; Eframe->Draw() ;
@@ -704,8 +731,8 @@ void analyzer::fit_spectrum_background(int ichannel, double *fit_range){
         // sprintf(plotpath, "/user/jorana/ana_plots/%sch%i_E%i_%i_%i.png", run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int (jcounter)); //joranchange
         // sprintf(plotpath, "/data/xenon/joranang/plots28nov/%sch%i_E%i_%i_%i.png", run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int (jcounter));
         // sprintf(plotpath, "/dcache/xenon/jorana/Modulation/anaplots_temp/chan%i/E%i/%sch%i_E%i_%i_num%i.png",int(ichannel),int (fit_range[0]), run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int(jcounter)); //joranchange
-        sprintf(plotpath, "/data/xenon/joranang/anaplots_temp/chan%i/E%i/%sch%i_E%i_%i_num%i.png",int(ichannel),int (fit_range[0]), run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int(jcounter)); //joranchange
-        
+        sprintf(plotpath, "/data/xenon/joranang/anaplots_temp2/chan%i/E%i%sch%i_E%i_%i_num%i.png",int(ichannel),int (fit_range[0]), run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int(jcounter)); //joranchange
+        // sprintf(plotpath, "/data/xenon/joranang/anaplots_20170112/%sch%i_E%i_%i_num%i.png", run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int(jcounter)); //joranchange
         c1->Divide(2,2) ;
         c1->cd(1) ; gPad->SetLogy();Eframe->SetMaximum(HOURS*1000); Eframe->SetMinimum(1); gPad->SetBottomMargin(0.15) ; Eframe->GetYaxis()->SetTitleOffset(1.1) ; Eframe->Draw() ;
         c1->cd(3) ; gPad->SetBottomMargin(0.15) ; hpull_frame->SetMaximum(sqrt(HOURS)*10); hpull_frame->SetMinimum(-10*sqrt(HOURS)); hpull_frame->GetYaxis()->SetTitleOffset(1.1) ;        hpull_frame->Draw() ;
@@ -1122,12 +1149,14 @@ void analyzer::get_interval_data(){
             // which is the source?
             int id = source_id[ich];
             if        (id == TI44) {
-                range[0] = 400; range[1] = 700;
-                fit_spectrum(ich, range);
-                // range[0] = 1000; range[1] = 1300;
-                range[0] = 1000; range[1] = 1400;
-                fit_spectrum(ich, range);
-                range[0] = 1500; range[1] = 2400;
+                // range[0] = 400; range[1] = 700;
+                // fit_spectrum(ich, range);
+                // // range[0] = 1000; range[1] = 1300;
+                // range[0] = 1000; range[1] = 1400;
+                // fit_spectrum(ich, range);
+                // range[0] = 1500; range[1] = 2400;
+                // fit_spectrum(ich, range);
+                range[0] = 400; range[1] = 2800;
                 fit_spectrum(ich, range);
             } else if (id == CO60 ) {
                 
@@ -1137,10 +1166,12 @@ void analyzer::get_interval_data(){
 //                 range[0] = 700; range[1] = 2000;
 //                 fit_spectrum(ich, range);
 //                 range[0] = 2200; range[1] = 3000;
-//                 fit_spectrum(ich, range);
-                range[0] = 900; range[1] = 1600;
-                fit_spectrum(ich, range);
-                range[0] = 2200; range[1] = 3000;
+                // fit_spectrum(ich, range);
+                // range[0] = 900; range[1] = 1600;
+                // fit_spectrum(ich, range);
+                // range[0] = 2200; range[1] = 3000;
+                // fit_spectrum(ich, range);
+                range[0] = 800; range[1] = 3000;
                 fit_spectrum(ich, range);
             } else if (id == CS137 ) {
                 range[0] = 500; range[1] = 1200;
