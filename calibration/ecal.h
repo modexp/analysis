@@ -33,13 +33,15 @@
 // CALIBRATION_MODE 1 = one calibration every TIME_INTERVAL seconds
 //
 #define CALIBRATION_MODE 1
-#define TIME_INTERVAL 1800 
+#define TIME_INTERVAL 600
 
 /*----------------------------------------------------------------------------*/
 
 // Header file for the classes stored in the TTree if any.
 
 // Fixed size dimensions of array or collections stored in the TTree if any.
+
+using namespace std;
 
 class ecal {
 public :
@@ -53,6 +55,7 @@ public :
    Float_t         height;
    Double_t        time;
    UChar_t         istestpulse;
+   UChar_t         istrigger;
    Int_t           error;
    Float_t         baseline;
    Float_t         rms;
@@ -63,6 +66,7 @@ public :
    TBranch        *b_height;   //!
    TBranch        *b_time;   //!
    TBranch        *b_istestpulse;   //!
+   TBranch        *b_istrigger;   //!
    TBranch        *b_error;   //!
    TBranch        *b_baseline;   //!
    TBranch        *b_baselineRMS;   //!
@@ -128,6 +132,7 @@ ecal::ecal(string fname,string cname) : fChain(0)
     char cmd[256];
     TChain *tree = new TChain("T");
     sprintf(cmd,"%s*.root",fname.c_str());
+    cout << cmd << endl;
     tree->Add(cmd);
     
     calFile = cname;
@@ -178,6 +183,7 @@ void ecal::Init(TChain *tree)
     
     // Set branch addresses and branch pointers
     if (!tree) return;
+    
     fChain = tree;
     fCurrent = -1;
     fChain->SetMakeClass(1);
@@ -190,6 +196,7 @@ void ecal::Init(TChain *tree)
     fChain->SetBranchAddress("error", &error, &b_error);
     fChain->SetBranchAddress("baseline", &baseline, &b_baseline);
     fChain->SetBranchAddress("rms", &rms, &b_baselineRMS);
+    //fChain->SetBranchAddress("istrigger", &istrigger, &b_istrigger);
     Notify();
 }
 

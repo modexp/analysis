@@ -14,8 +14,9 @@
 
 /*----------------------------------------------------------------------------*/
 
-#define TIME_INTERVAL 3600
+#define TIME_INTERVAL 300
 #define PLOT_ON_SCREEN 0
+#define ROOFIT_ON 0
 
 /*----------------------------------------------------------------------------*/
 #define NUMBER_OF_CHANNELS 8
@@ -62,6 +63,14 @@ class analyzer {
     Double_t        bz;
     Double_t        btot;
     Double_t        humid;
+    Double_t        hv0;
+    Double_t        hv1;
+    Double_t        hv2;
+    Double_t        hv3;
+    Double_t        hv4;
+    Double_t        hv5;
+    Double_t        hv6;
+    Double_t        hv7;
     
     
     
@@ -82,6 +91,14 @@ class analyzer {
     TBranch        *b_bz;   //!
     TBranch        *b_btot;   //!
     TBranch        *b_humid;   //!
+    TBranch        *b_hv0;   //!
+    TBranch        *b_hv1;   //!
+    TBranch        *b_hv2;   //!
+    TBranch        *b_hv3;   //!
+    TBranch        *b_hv4;   //!
+    TBranch        *b_hv5;   //!
+    TBranch        *b_hv6;   //!
+    TBranch        *b_hv7;   //!
     
     analyzer(string fname, string cname);
     virtual ~analyzer();
@@ -104,9 +121,11 @@ class analyzer {
     void fit_spectrum(int ichannel);
     void fit_spectrum_simple(int ichannel);
     void fit_spectrum(int ichannel, double *fit_range);
-    void addTreeEntry(Double_t E, Double_t R, Double_t dR, Double_t res, Int_t ich, Int_t ipk);
+    void addTreeEntry(Double_t E, Double_t R, Double_t dR, Double_t res, Int_t ich, Int_t ipk, Double_t* parameters, Double_t* errors, Double_t bg_int, Double_t bg_err);
     void processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealVar sig, int ichannel, int ipeak);
     void get_source_id();
+    void cas_fitter(int ichannel, int ipeak, double *fit_range);
+    void PlotResiduals(TH1F *inthist, TF1* fitresult, Float_t Elow, Float_t Ehigh);
     
     double covariance(int i, int j);
     // histograms
@@ -134,6 +153,36 @@ class analyzer {
     Double_t    _t_bz;
     Double_t    _t_btot;
     Double_t    _t_humid;
+    
+    Double_t    _t_hv0;
+    Double_t    _t_hv1;
+    Double_t    _t_hv2;
+    Double_t    _t_hv3;
+    Double_t    _t_hv4;
+    Double_t    _t_hv5;
+    Double_t    _t_hv6;
+    Double_t    _t_hv7;
+    
+    Double_t    _t_par0;
+    Double_t    _t_par1;
+    Double_t    _t_par2;
+    Double_t    _t_par3;
+    Double_t    _t_par4;
+    Double_t    _t_par5;
+    Double_t    _t_par6;
+    Double_t    _t_par7;
+    
+    Double_t    _t_err0;
+    Double_t    _t_err1;
+    Double_t    _t_err2;
+    Double_t    _t_err3;
+    Double_t    _t_err4;
+    Double_t    _t_err5;
+    Double_t    _t_err6;
+    Double_t    _t_err7;
+    
+    Double_t    _t_bg_int;
+    Double_t    _t_bg_err;
     
     // time information
     Double_t t0,tstart,time_since_start,delta_t;
