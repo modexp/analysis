@@ -10,6 +10,8 @@
 #include <iostream>
 #include <vector>
 #include <stdio.h>
+#include <TApplication.h>
+#include <TSpectrum.h>
 
 /*---------------------------------------------------------------------------------------------------*/
 //
@@ -29,8 +31,8 @@
 // (2) Set range_low and range_high to find the range in which the peak with cal_energy should be
 
 //                                           CH0       CH1         CH2         CH3       CH4    CH5    CH6    CH7
-const double range_low[NUMBER_OF_CHANNELS] ={0.16e-6 , 0.14e-6   , 0.05e-6   , 0.05e-6 , 0.   , 0.   , 0.   , 0.  };
-const double range_high[NUMBER_OF_CHANNELS]={1e-6    , 1e-6      , 1e-6      , 1e-6    , 1e-6 , 1e-6 , 1e-6 , 1e6 };
+const double range_low[NUMBER_OF_CHANNELS] ={0. ,       0.  ,       0.   ,      0. ,       0.  , 0.   , 0.   , 0.  };
+const double range_high[NUMBER_OF_CHANNELS]={.1e-6    , .1e-6      , 1e-6      , 1e-6    , 2e-6 , 0.2e-6 , 0.4e-6 , 0.4e-6 };
 
 /*---------------------------------------------------------------------------------------------------*/
 float source_energy[NUMBER_OF_SOURCES][MAX_PEAKS] =
@@ -39,10 +41,10 @@ float source_energy[NUMBER_OF_SOURCES][MAX_PEAKS] =
 //
 {
     {1460.,-1,-1,-1,-1},                 // ID0: Background
-    {511.,1157.020,511.+1157.020,-1,-1}, // ID1: Ti44
+    {511.,1157.020,(1157.020+511.), -1, -1}, // ID1: Ti44
     {1173.2,1332.5,1173.2+1332.5,-1,-1}, // ID2: Co60
     {661.7,-1,-1,-1,-1},                 // ID3: CS137
-    {-1,-1,-1,-1,-1},                    // ID4: MN54
+    {834.8,-1,-1,-1,-1},                    // ID4: MN54
     {1460.,-1,-1,-1,-1}                  // ID5: K40
 };
 
@@ -110,7 +112,7 @@ void ecal::book_histograms(){
 /*---------------------------------------------------------------------------------------------------*/
 void ecal::fill_histograms(int ilevel){
     
-    Long64_t nentries = fChain->GetEntriesFast();
+    Long64_t nentries = fChain->GetEntries();
     cout<<"Start calibration loop.... nentries ="<<nentries<<" LEVEL = "<<ilevel<<endl;
     Long64_t nbytes = 0, nb = 0;
     for (Long64_t jentry=0; jentry<nentries;jentry++) {
@@ -121,7 +123,7 @@ void ecal::fill_histograms(int ilevel){
         channel = channel % 100;
         
         if        (ilevel == BEFORE_CALIBRATION){
-            if(error == 0) _integral[channel]->Fill(integral);
+             _integral[channel]->Fill(integral);
         } else if (ilevel == AFTER_CALIBRATION){
             if(error == 0) _energy[channel]->Fill(ccal[channel][0]+integral*ccal[channel][1]);
             _energy_all[channel]->Fill(ccal[channel][0]+integral*ccal[channel][1]);
@@ -142,6 +144,7 @@ void ecal::get_source_id()
     // get the name of the first file in the data chain
     TFile * _f_tmp = fChain->GetFile();
     _f_tmp->cd("info/active");
+
     
     TNamed *isActive;
     for(int ichannel=0; ichannel<NUMBER_OF_CHANNELS; ichannel++){
@@ -227,21 +230,24 @@ void ecal::ecal_continuous(){
     //
     // book the histograms needed for the energy calibration
     //
+
     book_histograms();
     
     //
     // prepare the event loop
     //
-    Long64_t nentries = fChain->GetEntriesFast();
-    cout<<"Start calibration loop.... nentries ="<<nentries<<endl;
+    Long64_t nentries = fChain->GetEntries();
+    cout<<"Start calibration loop.... nentries ="<<nentries << " compare to " << fChain->GetEntriesFast() <<endl;
+    Bool_t last_event = false;
     Long64_t nbytes = 0, nb = 0;
     
     //
     // loop over all events in the tree
     //
+
     for (Long64_t jentry=0; jentry<nentries;jentry++) {
         Long64_t ientry = LoadTree(jentry);
-        if (ientry < 0) break;
+        if (ientry < 0) last_event = true;
         nb = fChain->GetEntry(jentry);   nbytes += nb;
         
         //
@@ -261,44 +267,53 @@ void ecal::ecal_continuous(){
         //
         // fill the histogram
         //
-        if(error == 0 && !istestpulse) _integral[channel]->Fill(integral);
+        if (!istestpulse) _integral[channel]->Fill(integral);
         
-        if(time_since_start - t0 > TIME_INTERVAL) {
+        if(time_since_start - t0 > TIME_INTERVAL || last_event) {
             // maximum validity time of this calibration....
             _cal_tmax = time;
             //
             // do the calibration
             //
+
             do_calibration();
+
             //
             // file the output tree
             //
+
             fill_tree(_cal_tmin,_cal_tmax);
+
             //
             // reset the histograms
             //
+
             reset_histograms();
+
             //
             // reset the time for the start of the next interval
             //
             t0 = time_since_start;
             // SET THE MINIMUM TIME OF THE NEXT INTERVAL
             _cal_tmin = time;
+
         }
-        if(jentry%100000 == 0) cout<<"Processed "<<jentry<<" events"<<endl;
+        if(jentry%100000 == 0) cout<<"Processed "<<jentry<<" events out of " << nentries <<endl;
+
     }
     //
     // if a run is very short we need to make a calibration anyhow on the available data
     //
-    if(time_since_start < TIME_INTERVAL) do_calibration();
     
+    if(time_since_start < TIME_INTERVAL) do_calibration();
     //
     // if the last bit of data dont have their own calibration, use the previous
     //
     fill_tree(_cal_tmin,9e99);
-    
+
     _f->Write();
     _f->Close();
+    
 }
 /*---------------------------------------------------------------------------------------------------*/
 void ecal::reset_histograms(){
@@ -338,6 +353,7 @@ void ecal::ecal_single(){
             sprintf(parname,"cal_ch%02d_c%i",ich,ipar);
             TParameter <double> *p1 = new TParameter<double>(parname,ccal[ich][ipar]);
             p1->Write();
+            delete p1;
         }
     }
     //
@@ -349,7 +365,6 @@ void ecal::ecal_single(){
     // loop over the events and fill histograms: post-calibration
     //
     fill_histograms(AFTER_CALIBRATION);
-    
     
     _f->Write();
     _f->Close();
@@ -410,22 +425,34 @@ void ecal::do_calibration(){
             // the source identifier for this channel
             int id = source_id[ich];
             
+            
             for (int i=0; i<MAX_PEAKS; i++){
                 if(source_energy[id][i]>0) npeak++;
             }
             
-            /// if(npeak == 0){ // no calibration possible ..... E = 1.0*integral.
-            // if the calibration fails I want a simple linear realtion between integral and energy
-            /// }
-            
             // STEP1: find the highest peak
             // define the proper range for searching the calibration constant
             _integral[ich]->GetXaxis()->SetRangeUser(range_low[ich],range_high[ich]);
-            // find the bin with maximum value in the range
-            int ibin      = _integral[ich]->GetMaximumBin();
-            double val    = _integral[ich]->GetBinCenter(ibin);
+
+            // Cassie changed: step 1
+            // need the primary peak, not necessarily the tallest (e.g. Ti-44, where the tallest peak is 68-78 keV, but the primary peak is 511 keV
+            TSpectrum *s = new TSpectrum(MAX_PEAKS); // 5 peaks just in case... we're really only looking for the biggest one
+            s->Search(_integral[ich], 2.5, "new");
+            double *peakpos =  s->GetPositionX();
+            double val;
+            int ibin = 0;
+            val = peakpos[0];
+	      
+            int nentries = _integral[ich]->GetNbinsX();
+            for (int i = 0; i <nentries; i++) {
+                if (val >= _integral[ich]->GetBinCenter(i)){
+                    ibin = i;
+                    break;
+                }
+            }
             double maxval = _integral[ich]->GetBinContent(ibin);
             
+            delete s;
             
             Double_t ee[MAX_PEAKS];
             Double_t dee[MAX_PEAKS];
@@ -450,13 +477,14 @@ void ecal::do_calibration(){
                 vlow  = val - 5*sig_expected;//0.025e-6;
                 vhigh = val + 5*sig_expected;//0.025e-6;
                 
+                /*
                 if(ich == 4 || ich ==5){
                     if(ipeak == 0 ) {
                         vhigh = val+3*sig_expected;//0.015e-6;
                     }
                     if(ipeak == 1 ) vlow  = val-3*sig_expected;//0.015e-6;
                 }
-                
+                 */
                 //
                 // fit a Gauss around the desired location in the spectrum
                 //
@@ -473,12 +501,6 @@ void ecal::do_calibration(){
                 func->SetParameters(maxval,val,sig_expected);
                 func->SetParNames("C","mean","sigma");
                 _integral[ich]->Fit("fit","Q","",vlow,vhigh);
-                //            if(ich==2 || ich==4){
-                //              cout << ich<<" " <<ipeak <<" chi2 = "<<func->GetChisquare() / func->GetNDF()<<endl;
-                //              _integral[ich]->Draw();
-                //              cv1->Update();
-                //              cin>>huh;
-                //            }
                 
                 //
                 // get the parameters
@@ -488,6 +510,7 @@ void ecal::do_calibration(){
                 Vs_peak[ipeak]  = func->GetParameter(1);
                 dVs_peak[ipeak] = func->GetParError(1);
                 chi2_fit_av    += func->GetChisquare() / func->GetNDF();
+                delete func;
             }
             
             //
@@ -525,6 +548,7 @@ void ecal::do_calibration(){
                 ////ccal[ich][0] = gg->GetParameter(0);
                 ////ccal[ich][1] = gg->GetParameter(1);
                 ////ccal[ich][2] = gg->GetParameter(2);
+                delete gcal;
                 
             }
             cal_quality[ich] = chi2_fit_av/npeak;
@@ -532,3 +556,13 @@ void ecal::do_calibration(){
     }
 }
 /*---------------------------------------------------------------------------------------------------*/
+
+// changed so included in the make file
+int main(int argc, char** argv) {
+  string fname(argv[1]), sname(argv[2]);
+  TApplication* app = new TApplication("app",&argc,argv);
+  ecal e(fname, sname);
+  e.Loop();
+  delete app;
+  return 0;
+}
