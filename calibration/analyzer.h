@@ -15,9 +15,9 @@
 /*----------------------------------------------------------------------------*/
 #define HOURS 1
 #define TIME_INTERVAL HOURS*3600
-#define FIT_BG_TEMPLATE 1 //joranchange
-#define PLOT_ON_SCREEN 1 //joranchange
-
+#define IGNORE_SMALL_DATASET 1 // if 1-> don't use datasets that are smaller than TIME_INTERVAL
+#define FIT_BG_TEMPLATE 1
+#define PLOT_ON_SCREEN 1 
 /*----------------------------------------------------------------------------*/
 #define NUMBER_OF_CHANNELS 8
 
@@ -63,7 +63,7 @@ class analyzer {
     Double_t        bz;
     Double_t        btot;
     Double_t        humid;
-    //Cassieadd
+    
     Double_t        hv0;
     Double_t        hv1;
     Double_t        hv2;
@@ -72,8 +72,7 @@ class analyzer {
     Double_t        hv5;
     Double_t        hv6;
     Double_t        hv7;
-
-    
+       
     
     
     // List of branches
@@ -93,7 +92,7 @@ class analyzer {
     TBranch        *b_bz;   //!
     TBranch        *b_btot;   //!
     TBranch        *b_humid;   //!
-    //Cassieadd
+
     TBranch        *b_hv0;   //!
     TBranch        *b_hv1;   //!
     TBranch        *b_hv2;   //!
@@ -136,6 +135,8 @@ class analyzer {
     vector<TH1F*> _e_all,_e_good,_e_err1,_e_err2,_e_err4,_pk_tmp;
     vector<TH1F*> _b_good,_b_err1,_b_err2,_b_err4;
     vector<TH2F*> _2d_good,_2d_err1,_2d_err2,_2d_err4;
+    vector<Double_t> tot_tot_err;
+    vector<Double_t> glob_tot_err;
     //TH1F *_T;
     
     TTree *tree;
@@ -151,8 +152,9 @@ class analyzer {
     Double_t    _t_energy;
     Double_t    _t_res;
     Double_t    _t_temp;
-    Double_t    _t_fractry; //Joranadd
-    Double_t    _t_chi2; //Joranadd
+    Double_t    _t_fractry; 
+    Double_t    _t_chi2; 
+    Double_t    _t_err_rate;
 
     Double_t    _t_pres;
     Double_t    _t_bx;
@@ -161,7 +163,6 @@ class analyzer {
     Double_t    _t_btot;
     Double_t    _t_humid;
 
-    //Cassie add
     Double_t    _t_hv0;
     Double_t    _t_hv1;
     Double_t    _t_hv2;

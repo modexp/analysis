@@ -29,12 +29,8 @@
 // (2) Set range_low and range_high to find the range in which the peak with cal_energy should be
 
 //                                           CH0       CH1         CH2         CH3       CH4    CH5    CH6    CH7
-// const double range_low[NUMBER_OF_CHANNELS] ={0.16e-6 , 0.137e-6  , 0.05e-6   , 0.05e-6 , 0.   , 0.   , 0.   , 0.  };
 const double range_low[NUMBER_OF_CHANNELS] ={0.15e-6 , 0.13e-6  , 0.05e-6   , 0.05e-6 , 0.   , 0.   , 0.   , 0.  };
 const double range_high[NUMBER_OF_CHANNELS]={1e-6    , 1e-6      , 1e-6      , 1e-6    , 1e-6 , 1e-6 , 1e-6 , 1e6 };
-
-// const double range_low[NUMBER_OF_CHANNELS] ={0.4e-6 , 0.14e-6   , 0.05e-6   , 0.05e-6 , 0.   , 0.   , 0.   , 0.  };
-// const double range_high[NUMBER_OF_CHANNELS]={0.5e-6    , 1e-6      , 1e-6      , 1e-6    , 1e-6 , 1e-6 , 1e-6 , 1e6 };
 
 /*---------------------------------------------------------------------------------------------------*/
 float source_energy[NUMBER_OF_SOURCES][MAX_PEAKS] =
@@ -130,7 +126,7 @@ void ecal::book_histograms(){
 /*---------------------------------------------------------------------------------------------------*/
 void ecal::fill_histograms(int ilevel){
     
-    Long64_t nentries = fChain->GetEntriesFast();
+    Long64_t nentries = fChain->GetEntries();
     cout<<"Start calibration loop.... nentries ="<<nentries<<" LEVEL = "<<ilevel<<endl;
     Long64_t nbytes = 0, nb = 0;
     for (Long64_t jentry=0; jentry<nentries;jentry++) {
@@ -175,7 +171,7 @@ void ecal::get_source_id()
         } else {
             channel_active[ichannel] = kFALSE;
         }
-        
+        cout<< "channel"<<ichannel<<" is on?"<<channel_active[ichannel] <<endl;
     }
     // retrieve the source information
     _f_tmp->cd("info/source");
@@ -253,7 +249,7 @@ void ecal::ecal_continuous(){
     //
     // prepare the event loop
     //
-    Long64_t nentries = fChain->GetEntriesFast();
+    Long64_t nentries = fChain->GetEntries();
     cout<<"Start calibration loop.... nentries ="<<nentries<<endl;
     Long64_t nbytes = 0, nb = 0;
     
@@ -447,55 +443,39 @@ void ecal::do_calibration(){
             double val    = _integral[ich]->GetBinCenter(ibin);
             double maxval = _integral[ich]->GetBinContent(ibin);     
 
-            // Here I'm trying to subtract an exponential jorana@nikhef.nl
-            if(SUBTRACT_EXP && ich < 2){
+            // Here I'm trying to subtract an exponential. Change by J. Angevaare, jorana@nikhef.nl
+            // http://www.physics.purdue.edu/darkmatters/doku.php?id=modulation:an:calconst#change_in_ecalc_for_background_channels
+            if(SUBTRACT_EXP && ich < 2){ // Only subtract for the BG channels
                 cout<<"do_calibration:: subtracting exponent"<<endl;
                 TF1 *exp_func = new TF1("fitexp", fitf_exp, range_low[ich], range_high[ich], 2);
-                Double_t amp = _integral[ich]->GetMaximumBin();
-                Double_t pow = 1e7;
-                // Double_t e0  = 0.;
-                // Double_t baselin = 0;
-                // exp_func->SetParameters(amp, pow, baselin);
-                // exp_func->SetParNames("amplitude","power","baseline");
+                Double_t amp = _integral[ich]->GetMaximumBin(); // Firts guess
+                Double_t pow = 1e7;                             // First guess    
                 exp_func->SetParameters(amp, pow);
                 exp_func->SetParNames("amplitude","power");
                 exp_func->SetParLimits(0, 0.0, 5 * amp);
-                // exp_func->SetParLimits(1, 0.0, 100);
-                // exp_func->SetParLimits(2, -range_high[ich], range_high[ich]);
-                // exp_func->SetParLimits(2, 0, amp);
-                _integral[ich]->Fit("fitexp","Q","",range_low[ich], range_high[ich]);
+
+                _integral[ich]->Fit("fitexp", "Q", "", range_low[ich], range_high[ich]);
                 amp = exp_func->GetParameter(0);   
                 pow = exp_func->GetParameter(1); 
-                // e0  = exp_func->GetParameter(2); 
-                // baselin = exp_func->GetParameter(2); 
-                cout<<"do_calibration:: fitting done we have A, b, C = "<< amp <<" "<< pow <<" "<< "" <<" " << ""<<endl;
+
+                cout<<"do_calibration:: fitting done we have amp, power = "<< amp << " "<< pow <<endl;
 
                 cout<<"do_calibration:: Change bincontent "<<endl;
-                TH1F *temp_integral  = (TH1F*)_integral[ich] -> Clone("temp_integral");
+                // Replace the data in each bin by data - fit to get more pronounced peaks.
                 for (int bin = 1; bin < _integral[ich] -> GetNbinsX(); bin++){                    
                     Double_t bin_center  = _integral[ich]-> GetBinCenter(bin);
                     Double_t bin_content = _integral[ich]-> GetBinContent(bin);
                     Double_t bin_fitted  = (amp * TMath::Exp(- pow * bin_center) );
-                    // Double_t bin_fitted  = (amp * TMath::Exp(- pow * bin_center) - baseline);
                     Double_t bin_setvalue= bin_content - bin_fitted;
-                    temp_integral -> SetBinContent(bin, bin_setvalue);
-                    _integral[ich] -> SetBinContent(bin, bin_setvalue);
+                    _integral[ich]-> SetBinContent(bin, bin_setvalue);
                 }   
-                cout << "do_calibration:: ibin was " << ibin <<endl;
-                ibin   = temp_integral -> GetMaximumBin();
-                cout << "do_calibration:: ibin is  1 " << ibin <<endl;
-                temp_integral -> Smooth(3);
-                ibin   = temp_integral -> GetMaximumBin();
-                cout << "do_calibration:: ibin is  2c " << ibin <<endl;
-                val    = temp_integral-> GetBinCenter(ibin);
-                maxval = temp_integral-> GetBinContent(ibin);
-                exp_func -> Delete();
-                temp_integral -> Delete();
+                val    = _integral[ich]-> GetBinCenter(ibin);
+                maxval = _integral[ich]-> GetBinContent(ibin);
+                delete exp_func;
             } 
             // end subtracting 
 
-           
-            
+                      
             Double_t ee[MAX_PEAKS];
             Double_t dee[MAX_PEAKS];
             Double_t Vs_peak[MAX_PEAKS];
@@ -561,6 +541,7 @@ void ecal::do_calibration(){
                 Vs_peak[ipeak]  = func->GetParameter(1);
                 dVs_peak[ipeak] = func->GetParError(1);
                 chi2_fit_av    += func->GetChisquare() / func->GetNDF();
+                delete func;
             }
             
             //
@@ -597,8 +578,8 @@ void ecal::do_calibration(){
                 ////ccal[ich][0] = gg->GetParameter(0);
                 ////ccal[ich][1] = gg->GetParameter(1);
                 ////ccal[ich][2] = gg->GetParameter(2);
-                
-            }
+                delete gcal;
+            } 
             cal_quality[ich] = chi2_fit_av/npeak;
         }
     }
