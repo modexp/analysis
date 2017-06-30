@@ -1,0 +1,5 @@
+Warning: no access to tty (Bad file descriptor).
+Thus no job control in this shell.
+Activate: ROOT has been sourced. Environment settings are ready. 
+ROOTSYS=/project/datagrid/anaconda/envs/joran
+Terminated
