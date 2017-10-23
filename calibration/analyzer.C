@@ -57,7 +57,7 @@ float source_energy[NUMBER_OF_SOURCES][MAX_PEAKS] =
     {511.,1157.020,511.+1157.020,-1,-1}, // ID1: Ti44
     {1173.2,1332.5,1173.2+1332.5,-1,-1}, // ID2: Co60
     {661.7,-1,-1,-1,-1},                 // ID3: CS137
-    {-1,-1,-1,-1,-1},                    // ID4: MN54
+    {834.8,-1,-1,-1,-1},                 // ID4: MN54
     {1460.,-1,-1,-1,-1}                  // ID5: K40
 };
 
@@ -309,15 +309,15 @@ void analyzer::fit_spectrum(int ichannel){
     //
     string mc_file="";
     if       (id == TI44){
-        mc_file = "/user/z37/Modulation/analysis/calibration/MC_ti44_modulation.root";
+        mc_file = "MC_ti44_modulation.root";
     } else if(id == CO60){
-        mc_file = "/user/z37/Modulation/analysis/calibration/MC_co60_modulation.root";
+        mc_file = "MC_co60_modulation.root";
     } else if(id == CS137){
-        mc_file = "/user/z37/Modulation/analysis/calibration/MC_cs137_modulation.root";
+        mc_file = "MC_cs137_modulation.root";
     } else if(id == MN54){
-        mc_file = "/user/z37/Modulation/analysis/calibration/MC_mn54_modulation.root";
+        mc_file = "MC_mn54_modulation.root";
     } else if(id == K40){
-        mc_file = "/user/z37/Modulation/analysis/calibration/MC_k40_modulation.root";
+        mc_file = "MC_k40_modulation.root";
     } else {
         cout <<"fit_spectrum:: BAD source identifier"<<endl;
     }
