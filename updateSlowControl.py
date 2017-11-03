@@ -113,7 +113,19 @@ for (index, yLabel, title, filename) in zip(dataIndices, axisLabels, plotTitles,
     print("Plotting %s..." % title)
 
     fig = plt.figure(figsize=(10,3))
-    plt.plot_date(slowdata['pandas_time'], slowdata[index], 'b.')
+    this_data = slowdata
+    if 'vars.' + index in config.keys():
+        dconf = config['vars.' + index]
+        for k, v in dconf.items():
+            if k == 'ignore_below':
+                this_data = this_data.loc[this_data[index] >=float(v)]
+            elif k == 'ignore_above':
+                this_data = this_data.loc[this_data[index] <=float(v)]
+            elif k == 'ignore_range':
+                this_data = this_data.loc[(this_data[index] >=float(v)[0])
+                                          & (this_data[index] <=float(v)[1])]
+
+    plt.plot_date(this_data['pandas_time'], this_data[index], 'b.')
     
     # Format axes
     ax = plt.gca()
