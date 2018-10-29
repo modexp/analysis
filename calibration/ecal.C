@@ -438,10 +438,6 @@ void ecal::do_calibration(){
             // STEP1: find the highest peak
             // define the proper range for searching the calibration constant
             _integral[ich]->GetXaxis()->SetRangeUser(range_low[ich],range_high[ich]);
-            // find the bin with maximum value in the range
-            int ibin      = _integral[ich]->GetMaximumBin();
-            double val    = _integral[ich]->GetBinCenter(ibin);
-            double maxval = _integral[ich]->GetBinContent(ibin);
 
             // Here I'm trying to subtract an exponential. Change by J. Angevaare, jorana@nikhef.nl
             // http://www.physics.purdue.edu/darkmatters/doku.php?id=modulation:an:calconst#change_in_ecalc_for_background_channels
@@ -469,11 +465,13 @@ void ecal::do_calibration(){
                     Double_t bin_setvalue= bin_content - bin_fitted;
                     _integral[ich]-> SetBinContent(bin, bin_setvalue);
                 }
-                val    = _integral[ich]-> GetBinCenter(ibin);
-                maxval = _integral[ich]-> GetBinContent(ibin);
                 delete exp_func;
             }
             // end subtracting
+            // find the bin with maximum value in the range
+            int ibin      = _integral[ich]->GetMaximumBin();
+            double val    = _integral[ich]->GetBinCenter(ibin);
+            double maxval = _integral[ich]->GetBinContent(ibin);
 
 
             Double_t ee[MAX_PEAKS];
