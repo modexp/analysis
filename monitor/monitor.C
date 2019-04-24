@@ -171,10 +171,10 @@ void monitor(string runname, string plot_type, int ichannel, bool log_scale, boo
     // open the first file: will be used to retrieve settings
     sprintf(cmd,"%s",runname.c_str());
     _file = new TFile(cmd,"READONLY");
-    
+
     // no statistics box
     gStyle->SetOptStat(0);
-  
+
     // what to plot?
     if        (plot_type == "spectrum") { // 1D energy spectrum
         plot_spectrum(ichannel);
@@ -188,16 +188,15 @@ void monitor(string runname, string plot_type, int ichannel, bool log_scale, boo
     }
     // set the logarithmic y-axis if required
     c1->SetLogy(log_scale);
-    
+
     // save the plot to file
     if(save_plot) {
         string tag="lin";
         if(log_scale) tag = "log";
 
-        TPad *current_pad = (TPad*)gROOT->GetSelectedPad();
         sprintf(cmd,"plots/%s_channel%i_%s.pdf",plot_type.c_str(),ichannel,tag.c_str());
-        current_pad->Print(cmd);
+        gPad->Print(cmd);
         sprintf(cmd,"plots/%s_channel%i_%s.png",plot_type.c_str(),ichannel,tag.c_str());
-        current_pad->Print(cmd);
+        gPad->Print(cmd);
     }
 }
