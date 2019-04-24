@@ -441,7 +441,7 @@ void ecal::do_calibration(){
 
             // Here I'm trying to subtract an exponential. Change by J. Angevaare, jorana@nikhef.nl
             // http://www.physics.purdue.edu/darkmatters/doku.php?id=modulation:an:calconst#change_in_ecalc_for_background_channels
-            if(SUBTRACT_EXP && id=BACKGROUND){ // Only subtract for the BG channels
+            if(SUBTRACT_EXP && id==BACKGROUND){ // Only subtract for the BG channels
                 cout<<"do_calibration:: subtracting exponent"<<endl;
                 TF1 *exp_func = new TF1("fitexp", fitf_exp, range_low[ich], range_high[ich], 2);
                 Double_t amp = _integral[ich]->GetMaximumBin(); // Firts guess
