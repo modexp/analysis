@@ -13,10 +13,11 @@
 #include <iostream>
 
 /*----------------------------------------------------------------------------*/
-
-#define TIME_INTERVAL 3600
-#define PLOT_ON_SCREEN 0
-
+#define HOURS 1 //This will return a rate for every X hours
+#define TIME_INTERVAL HOURS*3600
+#define IGNORE_SMALL_DATASET 0 // if 1-> don't use datasets that are smaller than TIME_INTERVAL
+#define FIT_BG_TEMPLATE 1
+#define PLOT_ON_SCREEN 1 
 /*----------------------------------------------------------------------------*/
 #define NUMBER_OF_CHANNELS 8
 
@@ -63,6 +64,15 @@ class analyzer {
     Double_t        btot;
     Double_t        humid;
     
+    Double_t        hv0;
+    Double_t        hv1;
+    Double_t        hv2;
+    Double_t        hv3;
+    Double_t        hv4;
+    Double_t        hv5;
+    Double_t        hv6;
+    Double_t        hv7;
+       
     
     
     // List of branches
@@ -82,6 +92,15 @@ class analyzer {
     TBranch        *b_bz;   //!
     TBranch        *b_btot;   //!
     TBranch        *b_humid;   //!
+
+    TBranch        *b_hv0;   //!
+    TBranch        *b_hv1;   //!
+    TBranch        *b_hv2;   //!
+    TBranch        *b_hv3;   //!
+    TBranch        *b_hv4;   //!
+    TBranch        *b_hv5;   //!
+    TBranch        *b_hv6;   //!
+    TBranch        *b_hv7; //!
     
     analyzer(string fname, string cname);
     virtual ~analyzer();
@@ -104,8 +123,10 @@ class analyzer {
     void fit_spectrum(int ichannel);
     void fit_spectrum_simple(int ichannel);
     void fit_spectrum(int ichannel, double *fit_range);
-    void addTreeEntry(Double_t E, Double_t R, Double_t dR, Double_t res, Int_t ich, Int_t ipk);
-    void processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealVar sig, int ichannel, int ipeak);
+    void fit_spectrum_background(int ichannel, double *fit_range);
+    void addTreeEntry(Double_t E, Double_t R, Double_t dR, Double_t res, Int_t ich, Int_t ipk, Double_t fractry, Double_t chindf, Double_t bg_rate, Double_t bg_drate);
+    void processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealVar sig, int ichannel, int ipeak, Double_t chi2, RooRealVar bg_f);
+    void processFitData_BackGround(RooRealVar N, int ichannel, Double_t chi2ndfs);
     void get_source_id();
     
     double covariance(int i, int j);
@@ -114,6 +135,8 @@ class analyzer {
     vector<TH1F*> _e_all,_e_good,_e_err1,_e_err2,_e_err4,_pk_tmp;
     vector<TH1F*> _b_good,_b_err1,_b_err2,_b_err4;
     vector<TH2F*> _2d_good,_2d_err1,_2d_err2,_2d_err4;
+    vector<Double_t> tot_tot_err;
+    vector<Double_t> glob_tot_err;
     //TH1F *_T;
     
     TTree *tree;
@@ -124,16 +147,30 @@ class analyzer {
     Int_t       _t_peakNum;
     Double_t    _t_rate;
     Double_t    _t_drate;
+    Double_t    _t_bg_rate;
+    Double_t    _t_bg_drate;
     Double_t    _t_energy;
     Double_t    _t_res;
     Double_t    _t_temp;
-    
+    Double_t    _t_fractry; 
+    Double_t    _t_chi2; 
+    Double_t    _t_err_rate;
+
     Double_t    _t_pres;
     Double_t    _t_bx;
     Double_t    _t_by;
     Double_t    _t_bz;
     Double_t    _t_btot;
     Double_t    _t_humid;
+
+    Double_t    _t_hv0;
+    Double_t    _t_hv1;
+    Double_t    _t_hv2;
+    Double_t    _t_hv3;
+    Double_t    _t_hv4;
+    Double_t    _t_hv5;
+    Double_t    _t_hv6;
+    Double_t    _t_hv7; 
     
     // time information
     Double_t t0,tstart,time_since_start,delta_t;
@@ -235,13 +272,22 @@ void analyzer::Init(TChain *tree)
     fChain->SetBranchAddress("rms", &rms, &b_baselineRMS);
     fChain->SetBranchAddress("ratio", &ratio, &b_ratio);
     fChain->SetBranchAddress("temp", &temp, &b_temp);
-    
+
     fChain->SetBranchAddress("pres", &pres, &b_pres);
     fChain->SetBranchAddress("bx", &bx, &b_bx);
     fChain->SetBranchAddress("by", &by, &b_by);
     fChain->SetBranchAddress("bz", &bz, &b_bz);
     fChain->SetBranchAddress("btot", &btot, &b_btot);
     fChain->SetBranchAddress("humid", &humid, &b_humid);
+
+    fChain->SetBranchAddress("hv0", &hv0, &b_hv0);
+    fChain->SetBranchAddress("hv1", &hv1, &b_hv1);
+    fChain->SetBranchAddress("hv2", &hv2, &b_hv2);
+    fChain->SetBranchAddress("hv3", &hv3, &b_hv3);
+    fChain->SetBranchAddress("hv4", &hv4, &b_hv4);
+    fChain->SetBranchAddress("hv5", &hv5, &b_hv5);
+    fChain->SetBranchAddress("hv6", &hv6, &b_hv6);
+    fChain->SetBranchAddress("hv7", &hv7, &b_hv7);
     
     Notify();
 }
