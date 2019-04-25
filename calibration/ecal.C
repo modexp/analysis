@@ -517,8 +517,10 @@ void ecal::do_calibration(){
                 ibin   = _integral[ich]->GetMaximumBin();
                 maxval = _integral[ich]->GetBinContent(ibin);
                 _integral[ich]->GetXaxis()->SetRangeUser(0.,1.);
+                val    = _integral[ich]->GetBinCenter(ibin);
 
-
+                vlow  = val - 5*sig_expected;//0.025e-6;
+                vhigh = val + 5*sig_expected;//0.025e-6;
                 // do the fit
                 TF1 *func = new TF1("fit",fitf_gauss,vlow,vhigh,5);
                 func->SetParameters(maxval,val,sig_expected);
