@@ -29,8 +29,9 @@
 // (2) Set range_low and range_high to find the range in which the peak with cal_energy should be
 
 //                                           CH0       CH1         CH2         CH3       CH4    CH5    CH6    CH7
-const double range_low[NUMBER_OF_CHANNELS] ={0.15e-6 , 0.13e-6  , 0.05e-6    , 0.05e-6 , 0.   , 0.   , 0.   , 0.  };
-const double range_high[NUMBER_OF_CHANNELS]={1e-6    , 1e-6      , 1e-6      , 1e-6    , 1e-6 , 1e-6 , 1e-6 , 1e6 };
+double range_low[NUMBER_OF_CHANNELS] ={0.15e-6 , 0.13e-6  , 0.05e-6    , 0.05e-6 , 0.   , 0.   , 0.   , 0.  };
+double range_high[NUMBER_OF_CHANNELS]={1e-6    , 1e-6      , 1e-6      , 1e-6    , 1e-6 , 1e-6 , 1e-6 , 1e6 };
+int peaks_to_find[NUMBER_OF_CHANNELS] = {5, 5, 5, 5, 5, 5, 5, 5};
 
 /*---------------------------------------------------------------------------------------------------*/
 float source_energy[NUMBER_OF_SOURCES][MAX_PEAKS] =
@@ -208,6 +209,83 @@ void ecal::get_source_id()
     cout <<"ecal::get_source_id ... done"<<endl;
 
 }
+
+const char* ecal::get_location()
+{
+    TFile * _f_tmp = fChain->GetFile();
+    _f_tmp->cd("info");
+    TNamed * location;
+    gDirectory->GetObject("location", location);
+    return location->GetTitle();
+}
+
+void ecal::load_settings()
+{
+    ifstream configFile;
+    configFile.open("settings.cfg");
+    // Check file opened correctly
+    if (!configFile) {
+      cout << "ecal::Couldn't open settings.cfg -- using defaults instead" << endl;
+      return;
+    }
+    const char* our_location = get_location();
+    char configlinebuffer[200];
+    bool foundconfig = false;
+    // Loop through config file
+    while (!configFile.eof()) {
+        configFile.getline(configlinebuffer,200);
+	if (configlinebuffer[0] == '#') {
+	  // Comment in config - ignore this line
+	  continue;
+	}
+
+	// Does the location match?
+	char* cfg_location;
+	cfg_location = strtok(configlinebuffer, " \t");
+	if (!cfg_location) {
+	  // Will be NULL if the line was blank - so just ignore this line!
+	  continue;
+	}
+	if (!(strcmp(cfg_location, our_location) == 0)) {
+	    continue;
+	}
+
+	// Does the time match?
+	char* cfgentrybuffer;	
+	double cfg_start_time, cfg_end_time;
+	cfgentrybuffer = strtok(NULL, " \t");
+	cfg_start_time = atof(cfgentrybuffer);
+	cfgentrybuffer = strtok(NULL, " \t");
+	cfg_end_time = atof(cfgentrybuffer);
+	fChain->GetEntry(0); // Puts the first start time in "time"
+	if ((time < cfg_start_time) || (time > cfg_end_time)) {
+	    continue;
+	}
+
+	if (foundconfig) {
+	  cout << "ecal::Found two valid config entries. Using defaults instead..." << endl;
+	  break;
+	}
+	
+	// Now we have found a good entry.
+	cout << "ecal::Found configuration entry in settings.cfg" << endl;
+
+	for (int ichannel = 0; ichannel < NUMBER_OF_CHANNELS; ++ichannel) {
+	  cfgentrybuffer = strtok(NULL, ","); // This is the # peaks to find
+	  peaks_to_find[ichannel] = atoi(cfgentrybuffer);
+	  cfgentrybuffer = strtok(NULL, ","); // This is the range start
+	  range_low[ichannel] = atof(cfgentrybuffer);
+	  cfgentrybuffer = strtok(NULL, " \t"); // This is the range start
+	  range_high[ichannel] = atof(cfgentrybuffer);
+	}
+    }
+    configFile.close();
+
+    if (foundconfig) {
+        cout << "ecal::Found no valid config entries. Using defaults instead..." << endl;
+    }
+}
+
 /*---------------------------------------------------------------------------------------------------*/
 void ecal::Loop()
 {
@@ -215,6 +293,9 @@ void ecal::Loop()
     // look in the first data file of the chain to see what sources are present
     //
     get_source_id();
+
+    // and get the settings from the file
+    load_settings();
 
     //
     // howto do the calibration....
@@ -428,7 +509,7 @@ void ecal::do_calibration(){
             int id = source_id[ich];
 
             for (int i=0; i<MAX_PEAKS; i++){
-                if(source_energy[id][i]>0) npeak++;
+	      if((source_energy[id][i] > 0) && (peaks_to_find[ich] > npeak)) npeak++;
             }
 
             /// if(npeak == 0){ // no calibration possible ..... E = 1.0*integral.

@@ -88,7 +88,8 @@ public :
     void reset_histograms();
     void fill_tree(Double_t t0, Double_t t1);
     void get_source_id();
-    
+    const char* get_location();
+    void load_settings();
     
     TFile *_f;
     
