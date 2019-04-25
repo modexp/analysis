@@ -269,6 +269,7 @@ void ecal::load_settings()
 	
 	// Now we have found a good entry.
 	cout << "ecal::Found configuration entry in settings.cfg" << endl;
+	foundconfig = true;
 
 	for (int ichannel = 0; ichannel < NUMBER_OF_CHANNELS; ++ichannel) {
 	  cfgentrybuffer = strtok(NULL, ","); // This is the # peaks to find
