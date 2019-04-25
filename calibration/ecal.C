@@ -281,7 +281,7 @@ void ecal::load_settings()
     }
     configFile.close();
 
-    if (foundconfig) {
+    if (!foundconfig) {
         cout << "ecal::Found no valid config entries. Using defaults instead..." << endl;
     }
 }
