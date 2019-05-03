@@ -180,6 +180,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
       cout <<"analyzer::fit_spectrum channel = "<<ichannel<<" source_id = "<<id<<" BG template ="<<bkg_file<<endl;
       TFile *f_bkg = new TFile(bkg_file.c_str(),"READONLY");
       TH1* h_bkg  = (TH1*)f_bkg->Get(bkg_name);
+      h_bkg->Scale(delta_t);
       RooDataHist bg_data("bg_data","bg_data",RooArgList(E), h_bkg);
       //delete h_time; delete h_ch0;
       delete h_bkg;
