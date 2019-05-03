@@ -166,53 +166,41 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
     // Include the measurement the background rate into the fitting procedure. Added by Joran (jorang@xs4all.nl)
     // The BG template should be custom made
     // http://www.physics.purdue.edu/darkmatters/doku.php?id=modulation:daq:bgtemplatefit
+    if(FIT_BG_TEMPLATE){
+      if(ichannel == 0){string name="ch0"; string bkg_file = "ch0.root";}
+      else if(ichannel == 1){string bkg_name="ch1"; string bkg_file = "ch1.root";}
+      else if(ichannel == 2){string bkg_name="ch2"; string bkg_file = "ch2.root";}
+      else if(ichannel == 3){string bkg_name="ch3"; string bkg_file = "ch3.root";}
+      else if(ichannel == 4){string bkg_name="ch4"; string bkg_file = "ch4.root";}
+      else if(ichannel == 5){string bkg_name="ch5"; string bkg_file = "ch5.root";}
+      else if(ichannel == 6){string bkg_name="ch6"; string bkg_file = "ch6.root";}
+      else if(ichannel == 7){string bkg_name="ch7"; string bkg_file = "ch7.root";}
+      else {cout <<"analyzer::fit_spectrum BAD channel"<<endl;}
 
-    string ch0_file = "ch_0.root";
+      cout <<"analyzer::fit_spectrum channel = "<<ichannel<<" source_id = "<<id<<" BG template ="<<bkg_file<<endl;
+      TFile *f_bkg = new TFile(bkg_file.c_str(),"READONLY");
+      TH1* h_bkg  = (TH1*)f_bkg->Get(bkg_name);
+      RooDataHist bg_data("bg_data","bg_data",RooArgList(E), h_bkg);
+      //delete h_time; delete h_ch0;
+      delete h_bkg;
+      f_bkg->Close();
+      RooHistPdf bg_ch0("bg_ch0","bg_ch0", E, bg_data, 0);
 
-    cout <<"analyzer::fit_spectrum channel = "<<ichannel<<" source_id = "<<id<<" BG template ="<<ch0_file<<endl;
+      double data_tot_events = 0; double bg_data_tot_events = 0; double mc3_tot_events = 0;
+      for (int binnum = fit_range[0]/((emax-emin)/nbin0); binnum < fit_range[1]/((emax-emin)/nbin0); binnum++){
+          bg_data.get(binnum) ; double events_bg_data = bg_data.weight() / time_template; // double devents_bg_data = bg_data.weightError() / time_template;
+          bg_data_tot_events += events_bg_data;
+          data.get(binnum); double events_data = data.weight() / delta_t    ; // double devents_data = data.weightError() / delta_t;
+          data_tot_events += events_data;
+      }
 
-    TFile *f_ch0 = new TFile(ch0_file.c_str(),"READONLY");
+      std::vector<RooRealVar*> bg_pdf_frac;
+      double bg_frac = (bg_data_tot_events) / (data_tot_events);
 
-    TH1* h_time  = (TH1*)f_ch0->Get("time");
-    double time_template = h_time->GetBinContent(1);
-
-    //
-    // construct the background pdf
-    //
-    TH1* h_ch0  = (TH1*)f_ch0->Get("ch0");
-    RooDataHist bg_data("bg_data","bg_data",RooArgList(E), h_ch0);
-    delete h_time; delete h_ch0;
-    f_ch0->Close();
-
-
-    // We could also open the other  background channel but one will be sufficient for now.
-    // string ch1_file = "ch_1.root";
-
-    // cout <<"fit_spectrum:: channel = "<<ichannel<<" source_id = "<<id<<" BG template ="<<ch1_file<<endl;
-
-    // TFile *f_ch1 = new TFile(ch1_file.c_str(),"READONLY");
-    // TH1* h_ch1   = (TH1*)f_ch1->Get("ch1");
-
-
-    // RooDataHist mc3("mc3","mc3",RooArgList(E), h_ch1);
-    // f_ch1->Close();
-
-    RooHistPdf bg_ch0("bg_ch0","bg_ch0", E, bg_data, 0);
-
-    double data_tot_events = 0; double bg_data_tot_events = 0; double mc3_tot_events = 0;
-    for (int binnum = fit_range[0]/((emax-emin)/nbin0); binnum < fit_range[1]/((emax-emin)/nbin0); binnum++){
-        bg_data.get(binnum) ; double events_bg_data = bg_data.weight() / time_template; // double devents_bg_data = bg_data.weightError() / time_template;
-        bg_data_tot_events += events_bg_data;
-        data.get(binnum); double events_data = data.weight() / delta_t    ; // double devents_data = data.weightError() / delta_t;
-        data_tot_events += events_data;
+      // // A simple background fraction can also be used (as below) but we if we fit the spectrum over a large energy range it is better to not constrain too tightly
+      // bg_pdf_frac.push_back(new RooRealVar("bg_pdf_frac","bg_pdf_frac",0.07,0.001,0.50));
+      bg_pdf_frac.push_back(new RooRealVar("bg_pdf_frac","bg_pdf_frac", bg_frac, 0.0, 1.0));
     }
-
-    std::vector<RooRealVar*> bg_pdf_frac;
-    double bg_frac = (bg_data_tot_events) / (data_tot_events);
-
-    // // A simple background fraction can also be used (as below) but we if we fit the spectrum over a large energy range it is better to not constrain too tightly
-    // bg_pdf_frac.push_back(new RooRealVar("bg_pdf_frac","bg_pdf_frac",0.07,0.001,0.50));
-    bg_pdf_frac.push_back(new RooRealVar("bg_pdf_frac","bg_pdf_frac", bg_frac, 0.0, 1.0));
 
     //
     //=====================================================================================================================
