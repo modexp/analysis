@@ -497,12 +497,12 @@ void ecal::do_calibration(){
                 vlow  = val - 5*sig_expected;//0.025e-6;
                 vhigh = val + 5*sig_expected;//0.025e-6;
 
-                if(ich == 4 || ich == 5){
+                /*if(ich == 4 || ich == 5){
                     if(ipeak == 0 ) {
                         vhigh = val+3*sig_expected;//0.015e-6;
                     }
                     if(ipeak == 1 ) vlow  = val-3*sig_expected;//0.015e-6;
-                }
+                }*/
 
                 // if(ich == 0 || ich == 1){
                 //     if(ipeak == 0 ) vlow = val - 3 * sig_expected;//0.015e-6;
@@ -525,7 +525,7 @@ void ecal::do_calibration(){
                 TF1 *func = new TF1("fit",fitf_gauss,vlow,vhigh,5);
                 func->SetParameters(maxval,val,sig_expected);
                 func->SetParNames("C","mean","sigma");
-                _integral[ich]->Fit("fit","Q","",vlow,vhigh);
+                _integral[ich]->Fit("fit","L","",vlow,vhigh);
                 //            if(ich==2 || ich==4){
                 //              cout << ich<<" " <<ipeak <<" chi2 = "<<func->GetChisquare() / func->GetNDF()<<endl;
                 //              _integral[ich]->Draw();
