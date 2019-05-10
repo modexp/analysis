@@ -17,7 +17,7 @@
 #define TIME_INTERVAL HOURS*3600
 #define IGNORE_SMALL_DATASET 0 // if 1-> don't use datasets that are smaller than TIME_INTERVAL
 #define FIT_BG_TEMPLATE 1
-#define PLOT_ON_SCREEN 1 
+#define PLOT_ON_SCREEN 1
 /*----------------------------------------------------------------------------*/
 #define NUMBER_OF_CHANNELS 8
 
@@ -41,11 +41,11 @@ class analyzer {
     public :
     RooFitResult *fr;
     string fileName, analyzer_file, run;
-    
-    
+
+
     TChain          *fChain;   //!pointer to the analyzed TTree or TChain
     Int_t           fCurrent; //!current Tree number in a TChain
-    
+
     // Declaration of leaf types
     Int_t           channel;
     Float_t         integral;
@@ -63,7 +63,7 @@ class analyzer {
     Double_t        bz;
     Double_t        btot;
     Double_t        humid;
-    
+
     Double_t        hv0;
     Double_t        hv1;
     Double_t        hv2;
@@ -72,9 +72,9 @@ class analyzer {
     Double_t        hv5;
     Double_t        hv6;
     Double_t        hv7;
-       
-    
-    
+
+
+
     // List of branches
     TBranch        *b_channel;   //!
     TBranch        *b_integral;   //!
@@ -101,7 +101,7 @@ class analyzer {
     TBranch        *b_hv5;   //!
     TBranch        *b_hv6;   //!
     TBranch        *b_hv7; //!
-    
+
     analyzer(string fname, string cname);
     virtual ~analyzer();
     virtual Int_t    Cut(Long64_t entry);
@@ -111,8 +111,8 @@ class analyzer {
     virtual void     Loop();
     virtual Bool_t   Notify();
     virtual void     Show(Long64_t entry = -1);
-    
-    
+
+
     void book_histograms();
     void fill_histograms();
     void reset_interval_data();
@@ -128,7 +128,7 @@ class analyzer {
     void processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealVar sig, int ichannel, int ipeak, Double_t chi2, RooRealVar bg_f);
     void processFitData_BackGround(RooRealVar N, int ichannel, Double_t chi2ndfs);
     void get_source_id();
-    
+
     double covariance(int i, int j);
     // histograms
     TFile *_f;
@@ -138,9 +138,9 @@ class analyzer {
     vector<Double_t> tot_tot_err;
     vector<Double_t> glob_tot_err;
     //TH1F *_T;
-    
+
     TTree *tree;
-    
+
     Double_t    _t_t0;
     Double_t    _t_time;
     Int_t       _t_chanNum;
@@ -152,8 +152,8 @@ class analyzer {
     Double_t    _t_energy;
     Double_t    _t_res;
     Double_t    _t_temp;
-    Double_t    _t_fractry; 
-    Double_t    _t_chi2; 
+    Double_t    _t_fractry;
+    Double_t    _t_chi2;
     Double_t    _t_err_rate;
 
     Double_t    _t_pres;
@@ -170,11 +170,11 @@ class analyzer {
     Double_t    _t_hv4;
     Double_t    _t_hv5;
     Double_t    _t_hv6;
-    Double_t    _t_hv7; 
-    
+    Double_t    _t_hv7;
+
     // time information
     Double_t t0,tstart,time_since_start,delta_t;
-    
+
     // event counter in interval
     Int_t n_interval;
 
@@ -196,11 +196,11 @@ analyzer::analyzer(string fname, string cname) : fChain(0)
     TChain *tree = new TChain("T");
     sprintf(cmd,"%s*.root",fname.c_str());
     tree->Add(cmd);
-    
+
     analyzer_file = cname;
-    
+
     // extract the run number from the input directory
-    
+
     // replace double // by / ..... just in case
     //    fname.replace(fname.find("//"),2,"/");
     size_t pos = fname.find_last_of("/");
@@ -216,8 +216,8 @@ analyzer::analyzer(string fname, string cname) : fChain(0)
     }
     run = fname.substr(index+1, pos - index - 1);
     cout << "analyzer:: run = "<<run<<endl;
-    
-    
+
+
     Init(tree);
 }
 
@@ -255,13 +255,13 @@ void analyzer::Init(TChain *tree)
     // code, but the routine can be extended by the user if needed.
     // Init() will be called many times when running on PROOF
     // (once per file to be processed).
-    
+
     // Set branch addresses and branch pointers
     if (!tree) return;
     fChain = tree;
     fCurrent = -1;
     fChain->SetMakeClass(1);
-    
+
     fChain->SetBranchAddress("channel", &channel, &b_channel);
     fChain->SetBranchAddress("integral", &integral, &b_integral);
     fChain->SetBranchAddress("height", &height, &b_height);
@@ -288,7 +288,7 @@ void analyzer::Init(TChain *tree)
     fChain->SetBranchAddress("hv5", &hv5, &b_hv5);
     fChain->SetBranchAddress("hv6", &hv6, &b_hv6);
     fChain->SetBranchAddress("hv7", &hv7, &b_hv7);
-    
+
     Notify();
 }
 
@@ -300,7 +300,7 @@ Bool_t analyzer::Notify()
     // is started when using PROOF. It is normally not necessary to make changes
     // to the generated code, but the routine can be extended by the
     // user if needed. The return value is currently not used.
-    
+
     return kTRUE;
 }
 

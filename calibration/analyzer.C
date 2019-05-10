@@ -166,20 +166,22 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
     // Include the measurement the background rate into the fitting procedure. Added by Joran (jorang@xs4all.nl)
     // The BG template should be custom made
     // http://www.physics.purdue.edu/darkmatters/doku.php?id=modulation:daq:bgtemplatefit
+    RooHistPdf bg_ch0;
     if(FIT_BG_TEMPLATE){
-      if(ichannel == 0){string name="ch0"; string bkg_file = "ch0.root";}
-      else if(ichannel == 1){string bkg_name="ch1"; string bkg_file = "ch1.root";}
-      else if(ichannel == 2){string bkg_name="ch2"; string bkg_file = "ch2.root";}
-      else if(ichannel == 3){string bkg_name="ch3"; string bkg_file = "ch3.root";}
-      else if(ichannel == 4){string bkg_name="ch4"; string bkg_file = "ch4.root";}
-      else if(ichannel == 5){string bkg_name="ch5"; string bkg_file = "ch5.root";}
-      else if(ichannel == 6){string bkg_name="ch6"; string bkg_file = "ch6.root";}
-      else if(ichannel == 7){string bkg_name="ch7"; string bkg_file = "ch7.root";}
+      string bkg_file, bkg_name;
+      if(ichannel == 0){bkg_name="ch0"; string bkg_file = "ch0.root";}
+      else if(ichannel == 1){ bkg_name="ch1"; bkg_file = "ch1.root";}
+      else if(ichannel == 2){ bkg_name="ch2"; bkg_file = "ch2.root";}
+      else if(ichannel == 3){ bkg_name="ch3"; bkg_file = "ch3.root";}
+      else if(ichannel == 4){ bkg_name="ch4"; bkg_file = "ch4.root";}
+      else if(ichannel == 5){ bkg_name="ch5"; bkg_file = "ch5.root";}
+      else if(ichannel == 6){ bkg_name="ch6"; bkg_file = "ch6.root";}
+      else if(ichannel == 7){ bkg_name="ch7"; bkg_file = "ch7.root";}
       else {cout <<"analyzer::fit_spectrum BAD channel"<<endl;}
-
+      const char *tree= bkg_name.c_str();
       cout <<"analyzer::fit_spectrum channel = "<<ichannel<<" source_id = "<<id<<" BG template ="<<bkg_file<<endl;
       TFile *f_bkg = new TFile(bkg_file.c_str(),"READONLY");
-      TH1* h_bkg  = (TH1*)f_bkg->Get(bkg_name);
+      TH1* h_bkg  = (TH1*)f_bkg->Get(tree);
       h_bkg->Scale(delta_t);
       RooDataHist bg_data("bg_data","bg_data",RooArgList(E), h_bkg);
       //delete h_time; delete h_ch0;
@@ -188,20 +190,21 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
       RooHistPdf bg_ch0("bg_ch0","bg_ch0", E, bg_data, 0);
 
       double data_tot_events = 0; double bg_data_tot_events = 0; double mc3_tot_events = 0;
-      for (int binnum = fit_range[0]/((emax-emin)/nbin0); binnum < fit_range[1]/((emax-emin)/nbin0); binnum++){
+      /*for (int binnum = fit_range[0]/((emax-emin)/nbin0); binnum < fit_range[1]/((emax-emin)/nbin0); binnum++){
           bg_data.get(binnum) ; double events_bg_data = bg_data.weight() / time_template; // double devents_bg_data = bg_data.weightError() / time_template;
           bg_data_tot_events += events_bg_data;
           data.get(binnum); double events_data = data.weight() / delta_t    ; // double devents_data = data.weightError() / delta_t;
           data_tot_events += events_data;
       }
-
-      std::vector<RooRealVar*> bg_pdf_frac;
-      double bg_frac = (bg_data_tot_events) / (data_tot_events);
+      */
+    }
+    std::vector<RooRealVar*> bg_pdf_frac;
+    double bg_frac = 0.07;//(bg_data_tot_events) / (data_tot_events);
 
       // // A simple background fraction can also be used (as below) but we if we fit the spectrum over a large energy range it is better to not constrain too tightly
       // bg_pdf_frac.push_back(new RooRealVar("bg_pdf_frac","bg_pdf_frac",0.07,0.001,0.50));
-      bg_pdf_frac.push_back(new RooRealVar("bg_pdf_frac","bg_pdf_frac", bg_frac, 0.0, 1.0));
-    }
+    bg_pdf_frac.push_back(new RooRealVar("bg_pdf_frac","bg_pdf_frac", bg_frac, 0.0, 1.0));
+
 
     //
     //=====================================================================================================================
@@ -256,21 +259,21 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
 
     RooAddPdf *sum;
     // Changed by Joran (jorana@nikhef.nl) for including ch0 and ch1 as BG
-    if(FIT_BG_TEMPLATE){
+    /*if(FIT_BG_TEMPLATE){
         if (nselect==1)  sum = new RooAddPdf("sum","g1+bg_ch0+bg",      RooArgList(*pk_gaus[0], bg_ch0, bg), RooArgList(*pk_frac[0], *bg_pdf_frac[0]));
         if (nselect==2)  sum = new RooAddPdf("sum","g1+g2+bg_ch0+bg",   RooArgList(*pk_gaus[0],*pk_gaus[1], bg_ch0,bg),RooArgList(*pk_frac[0],*pk_frac[1], *bg_pdf_frac[0]));
         if (nselect==3)  sum = new RooAddPdf("sum","g1+g2+g3+bg_ch0+bg",RooArgList(*pk_gaus[0],*pk_gaus[1], *pk_gaus[2], bg_ch0 ,bg),RooArgList(*pk_frac[0],*pk_frac[1],*pk_frac[2], *bg_pdf_frac[0]));
-    } else{
+    } else{*/
         if (nselect==1)  sum = new RooAddPdf("sum","g1+bg",RooArgList(*pk_gaus[0],bg),RooArgList(*pk_frac[0]));
         if (nselect==2)  sum = new RooAddPdf("sum","g1+g2+bg",RooArgList(*pk_gaus[0],*pk_gaus[1],bg),RooArgList(*pk_frac[0],*pk_frac[1]));
         if (nselect==3)  sum = new RooAddPdf("sum","g1+g2+g3+bg",RooArgList(*pk_gaus[0],*pk_gaus[1],*pk_gaus[2],bg),RooArgList(*pk_frac[0],*pk_frac[1],*pk_frac[2]));
-    }
+    //}
 
     cout <<"analyzer::fit_spectrum Compose the combined pdf ---- DONE "<<endl;
 
     E.setRange("signalRange",emin,emax);//fit_range[0],fit_range[1]);
-    RooExtendPdf esum("esum","extended pdf with Norm",*sum,Norm,"signalRange");
-
+    RooExtendPdf almost_esum("almost_esum","extended pdf with Norm",*sum,Norm,"signalRange");
+    RooAddPdf esum("esum","background included",RooArgList(almost_esum,bg_ch0));
     cout <<"analyzer::fit_spectrum Compose the combined pdf ---- extended DONE "<<endl;
 
     //
@@ -456,7 +459,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         plot_counter = plot_counter +1; //
 
         char plotpath[128];
-        sprintf(plotpath, "/data/xenon/jaspern/ana_plots/chan%i/E%i%sch%i_E%i_%i_num%i.png", int(ichannel),int (fit_range[0]), run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int(plot_counter));
+        sprintf(plotpath, "/data/xenon/tmons/ana_plots/chan%i/E%i%sch%i_E%i_%i_num%i.png", int(ichannel),int (fit_range[0]), run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int(plot_counter));
 
         c1->Divide(2,2) ;
         c1->cd(1) ; gPad->SetLogy();Eframe->SetMaximum(100000*HOURS); Eframe->SetMinimum(1); gPad->SetBottomMargin(0.15) ; Eframe->GetYaxis()->SetTitleOffset(1.1) ; Eframe->Draw() ;
@@ -669,7 +672,7 @@ void analyzer::fit_spectrum_background(int ichannel, double *fit_range){
         plot_counter = plot_counter +1; //
 
         char plotpath[128];
-        sprintf(plotpath, "/data/xenon/jaspern/ana_plots/chan%i/E%i%sch%i_E%i_%i_num%i.png",int(ichannel),int (fit_range[0]), run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int(plot_counter));
+        sprintf(plotpath, "/data/xenon/tmons/ana_plots/chan%i/E%i%sch%i_E%i_%i_num%i.png",int(ichannel),int (fit_range[0]), run.c_str(), int(ichannel),int (fit_range[0]), int (fit_range[1]), int(plot_counter));
         c1->Divide(2,2) ;
         c1->cd(1) ; gPad->SetLogy();Eframe->SetMaximum(HOURS*1000); Eframe->SetMinimum(1); gPad->SetBottomMargin(0.15) ; Eframe->GetYaxis()->SetTitleOffset(1.1) ; Eframe->Draw() ;
         c1->cd(3) ; gPad->SetBottomMargin(0.15) ; hpull_frame->SetMaximum(sqrt(HOURS)*10); hpull_frame->SetMinimum(-10*sqrt(HOURS)); hpull_frame->GetYaxis()->SetTitleOffset(1.1) ;        hpull_frame->Draw() ;
