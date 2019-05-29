@@ -270,7 +270,6 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
     //}
 
     cout <<"analyzer::fit_spectrum Compose the combined pdf ---- DONE "<<endl;
-
     E.setRange("signalRange",emin,emax);//fit_range[0],fit_range[1]);
     RooExtendPdf almost_esum("almost_esum","extended pdf with Norm",*sum,Norm,"signalRange");
     RooAddPdf esum("esum","background included",RooArgList(almost_esum,bg_ch0));
