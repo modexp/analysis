@@ -161,6 +161,8 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
     delete h_bg;
     f_mc->Close();
     RooHistPdf bg("bg","bg",E,mc1,0);
+    std::vector<RooRealVar*> bg_compton;
+    bg_compton.push_back(new RooRealVar("bg_compton","bg_compton", 100, 0.0, 1e5));
 
     //=====================================================================================================================
     // Include the measurement the background rate into the fitting procedure. Added by Joran (jorang@xs4all.nl)
@@ -198,12 +200,12 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
       }
       */
     }
-    std::vector<RooRealVar*> bg_pdf_frac;
+    //std::vector<RooRealVar*> bg_pdf_rate;
     double bg_frac = 0.07;//(bg_data_tot_events) / (data_tot_events);
 
       // // A simple background fraction can also be used (as below) but we if we fit the spectrum over a large energy range it is better to not constrain too tightly
       // bg_pdf_frac.push_back(new RooRealVar("bg_pdf_frac","bg_pdf_frac",0.07,0.001,0.50));
-    bg_pdf_frac.push_back(new RooRealVar("bg_pdf_frac","bg_pdf_frac", bg_frac, 0.0, 1.0));
+    RooRealVar bg_pdf_rate = RooRealVar("bg_pdf_rate","bg_pdf_rate", 1.0, 0.0, 2.0));
 
 
     //
@@ -214,7 +216,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
     cout <<"analyzer::fit_spectrum Define photo peak Gaussians"<<endl;
     std::vector<RooRealVar*> pk_mean;
     std::vector<RooRealVar*> pk_sigma;
-    std::vector<RooRealVar*> pk_frac;
+    std::vector<RooRealVar*> pk_rate;
     std::vector<RooGaussian*> pk_gaus;
 
     std::vector<RooRealVar*> pk_frac_tail;
@@ -232,7 +234,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         sprintf(vname,"sigma%i",isel);
         pk_sigma.push_back(new RooRealVar(vname,vname,25,5,100));
         sprintf(vname,"frac%i",isel);
-        pk_frac.push_back(new RooRealVar(vname,vname,0.3- 0.1 * isel, 0.0,1.0)); // change 0.3 1 - expected Compton - expected background
+        pk_rate.push_back(new RooRealVar(vname,vname,100., 0.0,1000.)); // change 0.3 1 - expected Compton - expected background
 
         sprintf(vname,"gaus%i",isel);
         pk_gaus.push_back(new RooGaussian(vname,vname,E,*pk_mean[isel],*pk_sigma[isel]));
@@ -257,29 +259,28 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
 
     cout <<"analyzer::fit_spectrum Compose the combined pdf"<<endl;
 
-    RooAddPdf *sum;
+    RooAddPdf sum;
     // Changed by Joran (jorana@nikhef.nl) for including ch0 and ch1 as BG
-    /*if(FIT_BG_TEMPLATE){
-        if (nselect==1)  sum = new RooAddPdf("sum","g1+bg_ch0+bg",      RooArgList(*pk_gaus[0], bg_ch0, bg), RooArgList(*pk_frac[0], *bg_pdf_frac[0]));
-        if (nselect==2)  sum = new RooAddPdf("sum","g1+g2+bg_ch0+bg",   RooArgList(*pk_gaus[0],*pk_gaus[1], bg_ch0,bg),RooArgList(*pk_frac[0],*pk_frac[1], *bg_pdf_frac[0]));
-        if (nselect==3)  sum = new RooAddPdf("sum","g1+g2+g3+bg_ch0+bg",RooArgList(*pk_gaus[0],*pk_gaus[1], *pk_gaus[2], bg_ch0 ,bg),RooArgList(*pk_frac[0],*pk_frac[1],*pk_frac[2], *bg_pdf_frac[0]));
-    } else{*/
-        if (nselect==1)  sum = new RooAddPdf("sum","g1+bg",RooArgList(*pk_gaus[0],bg),RooArgList(*pk_frac[0]));
-        if (nselect==2)  sum = new RooAddPdf("sum","g1+g2+bg",RooArgList(*pk_gaus[0],*pk_gaus[1],bg),RooArgList(*pk_frac[0],*pk_frac[1]));
-        if (nselect==3)  sum = new RooAddPdf("sum","g1+g2+g3+bg",RooArgList(*pk_gaus[0],*pk_gaus[1],*pk_gaus[2],bg),RooArgList(*pk_frac[0],*pk_frac[1],*pk_frac[2]));
-    //}
+    if(FIT_BG_TEMPLATE){
+        if (nselect==1)  sum = RooAddPdf("sum","g1+bg_ch0+bg",      RooArgList(*pk_gaus[0], bg_ch0, bg), RooArgList(*pk_rate[0], bg_pdf_rate,*bg_compton[0]));
+        if (nselect==2)  sum = RooAddPdf("sum","g1+g2+bg_ch0+bg",   RooArgList(*pk_gaus[0],*pk_gaus[1], bg_ch0,bg),RooArgList(*pk_rate[0],*pk_rate[1], bg_pdf_rate,*bg_compton[0]));
+        if (nselect==3)  sum = RooAddPdf("sum","g1+g2+g3+bg_ch0+bg",RooArgList(*pk_gaus[0],*pk_gaus[1], *pk_gaus[2], bg_ch0 ,bg),RooArgList(*pk_rate[0],*pk_rate[1],*pk_rate[2], bg_pdf_rate,*bg_compton[0]));
+    } else{
+        if (nselect==1)  sum = RooAddPdf("sum","g1+bg",RooArgList(*pk_gaus[0],bg),RooArgList(*pk_rate[0],*bg_compton[0]));
+        if (nselect==2)  sum = RooAddPdf("sum","g1+g2+bg",RooArgList(*pk_gaus[0],*pk_gaus[1],bg),RooArgList(*pk_rate[0],*pk_rate[1],*bg_compton[0]));
+        if (nselect==3)  sum = RooAddPdf("sum","g1+g2+g3+bg",RooArgList(*pk_gaus[0],*pk_gaus[1],*pk_gaus[2],bg),RooArgList(*pk_rate[0],*pk_rate[1],*pk_rate[2],*bg_compton[0]));
+    }
 
     cout <<"analyzer::fit_spectrum Compose the combined pdf ---- DONE "<<endl;
     E.setRange("signalRange",emin,emax);//fit_range[0],fit_range[1]);
-    RooExtendPdf almost_esum("almost_esum","extended pdf with Norm",*sum,Norm,"signalRange");
-    RooAddPdf esum("esum","background included",RooArgList(almost_esum,bg_ch0));
+    bg_pdf_rate.setConstant(kTRUE);
     cout <<"analyzer::fit_spectrum Compose the combined pdf ---- extended DONE "<<endl;
 
     //
     // fit the pdf to the data
     //
 
-    fr = esum.fitTo(data,Extended(kTRUE),Range(fit_range[0],fit_range[1]),Save());
+    fr = sum.fitTo(data,Extended(kTRUE),Range(fit_range[0],fit_range[1]),Save());
     fr->Print();
     //
     // process the fitted variables and store in the output tree
@@ -299,17 +300,17 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
             // plot the data and pdfs. use the plot range as found before
             //
             data.plotOn(Eres_frame);
-            esum.plotOn(Eres_frame);
+            sum.plotOn(Eres_frame);
 
             // Get the residuals
             cout <<"analyzer::fit_spectrum chi2 for channel = "<<ichannel<< " chi2 = "<< Eres_frame->chiSquare() <<endl;
 
             Double_t chindf2 = Eres_frame->chiSquare() ;
             if(IGNORE_SMALL_DATASET) {
-                if (int(TIME_INTERVAL)==int(delta_t)) processFitData(Norm,*pk_frac[id],*pk_mean[id],*pk_sigma[id], ichannel, peak_id[id], chindf2, *bg_pdf_frac[0]);
+                if (int(TIME_INTERVAL)==int(delta_t)) processFitData(*pk_rate[id],*pk_mean[id],*pk_sigma[id], ichannel, peak_id[id], chindf2, bg_pdf_rate);
             }
             else {
-                processFitData(Norm,*pk_frac[id],*pk_mean[id],*pk_sigma[id], ichannel, peak_id[id], chindf2, *bg_pdf_frac[0]);
+                processFitData(*pk_rate[id],*pk_mean[id],*pk_sigma[id], ichannel, peak_id[id], chindf2, bg_pdf_rate);
             }
             delete Eres_frame;
         }
@@ -346,7 +347,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         // plot the data and pdfs. use the plot range as found before
         //
         data.plotOn(Eframe);
-        esum.plotOn(Eframe);
+        sum.plotOn(Eframe);
         // Get the residuals by using residHist() and hpull ()
         cout <<"chi2 for channel = "<<ichannel<<endl;
         Double_t chindf = Eframe->chiSquare() ;
@@ -393,7 +394,7 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         spec_full_frame->SetTitle("");
         spec_full_frame->GetXaxis()->SetRangeUser(emin,emax);
         data.plotOn(spec_full_frame);
-        esum.plotOn(spec_full_frame);
+        sum.plotOn(spec_full_frame);
 
         // Show the chi2 and the run name on the first frame
         string runstr = run.substr (5,8);
@@ -409,20 +410,20 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         // spec_full_frame -> addObject(t1);
 
         for (int id=0; id<nselect; id++){
-            esum.plotOn(Eframe,Components(*pk_gaus[id]),LineColor(2),LineWidth(2));
+            sum.plotOn(Eframe,Components(*pk_gaus[id]),LineColor(2),LineWidth(2));
             pk_gaus[id]->paramOn(Eframe,Layout(0.55,0.88,0.85-id*0.15));
-            esum.plotOn(spec_full_frame,Components(*pk_gaus[id]),LineColor(2),LineWidth(2));
+            sum.plotOn(spec_full_frame,Components(*pk_gaus[id]),LineColor(2),LineWidth(2));
 
-            Double_t frac =  pk_frac[id]->getVal();
+            Double_t frac =  pk_rate[id]->getVal();
 
-            Double_t R1   = (Norm.getValV() )*frac/delta_t;
+            Double_t R1   = frac/delta_t;
             TPaveLabel *t2 = new TPaveLabel(0.65,0.88-id*0.1,0.88,0.80-id*0.1, Form("R_{%i} = %.2f Hz", id, R1), "brNDC");
             spec_full_frame -> addObject(t2);
         }
 
-        Double_t bg_frac_fit=  bg_pdf_frac[0] -> getVal();
-        Double_t bg_R    = (Norm.getValV() )* bg_frac_fit / delta_t;
-        Double_t bg_R_exp= (Norm.getValV() )* bg_frac     / delta_t;
+        Double_t bg_frac_fit=  bg_pdf_rate[0] -> getVal();
+        Double_t bg_R    = bg_frac_fit / delta_t;
+        Double_t bg_R_exp= bg_frac     / delta_t;
         TPaveLabel *t3 = new TPaveLabel(0.65,0.88-nselect*0.1, 0.88, 0.80-nselect*0.1, Form("BG Rate fit = %.1f, expect = %.1f Hz", bg_R, bg_R_exp), "brNDC");
         spec_full_frame -> addObject(t3);
 
@@ -446,12 +447,12 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
         //     TPaveLabel *t4 = new TPaveLabel(0.1,0.88-0.1,0.3, 0.88,  Form("HV = %.2f V", hv7), "brNDC");
         //     spec_full_frame -> addObject(t4);
         // }
-        esum.plotOn(Eframe,Components(bg),LineColor(kGreen),LineWidth(2));
-        esum.plotOn(spec_full_frame,Components(bg),LineColor(kGreen),LineWidth(2));
+        sum.plotOn(Eframe,Components(bg),LineColor(kGreen),LineWidth(2));
+        sum.plotOn(spec_full_frame,Components(bg),LineColor(kGreen),LineWidth(2));
 
         if(FIT_BG_TEMPLATE){
-            esum.plotOn(Eframe,Components(bg_ch0),LineColor(kCyan),LineWidth(2));
-            esum.plotOn(spec_full_frame,Components(bg_ch0),LineColor(kCyan),LineWidth(2));
+            sum.plotOn(Eframe,Components(bg_ch0),LineColor(kCyan),LineWidth(2));
+            sum.plotOn(spec_full_frame,Components(bg_ch0),LineColor(kCyan),LineWidth(2));
         }
 
         // I save the plots produced somewhere, for that i also use a counter (to keep track of the number of plots). This is a temporary fix.
@@ -478,9 +479,9 @@ void analyzer::fit_spectrum(int ichannel, double *fit_range){
 
         for (int id=0; id<nselect; id++){
             if(IGNORE_SMALL_DATASET) {
-                if (int(TIME_INTERVAL)==int(delta_t)) processFitData(Norm,*pk_frac[id],*pk_mean[id],*pk_sigma[id], ichannel, peak_id[id], chindf, *bg_pdf_frac[0]);
+                if (int(TIME_INTERVAL)==int(delta_t)) processFitData(*pk_rate[id],*pk_mean[id],*pk_sigma[id], ichannel, peak_id[id], chindf, bg_pdf_rate);
             } else {
-                processFitData(Norm,*pk_frac[id],*pk_mean[id],*pk_sigma[id], ichannel, peak_id[id], chindf, *bg_pdf_frac[0]);
+                processFitData(*pk_rate[id],*pk_mean[id],*pk_sigma[id], ichannel, peak_id[id], chindf, bg_pdf_rate);
             }
         }
 
@@ -817,10 +818,10 @@ void analyzer::fit_spectrum(int ichannel){
     //
     // process the variables to rates
     //
-    processFitData(Norm,g1frac,mean1,sigma1,ichannel,0, 99, g1frac ); //last 99 is chindf and last g1frac should be ignored
+    processFitData(g1frac,mean1,sigma1,ichannel,0, 99, g1frac ); //last 99 is chindf and last g1frac should be ignored
     if(ichannel == 2 || ichannel ==3 || ichannel ==4 || ichannel == 5){
-        processFitData(Norm,g2frac,mean2,sigma2,ichannel,1, 99, g1frac);//last 99 is chindf and last g1frac should be ignored
-        processFitData(Norm,g3frac,mean3,sigma3,ichannel,2, 99, g1frac);//last 99 is chindf and last g1frac should be ignored
+        processFitData(g2frac,mean2,sigma2,ichannel,1, 99, g1frac);//last 99 is chindf and last g1frac should be ignored
+        processFitData(g3frac,mean3,sigma3,ichannel,2, 99, g1frac);//last 99 is chindf and last g1frac should be ignored
     }
     //
     // cleanup
@@ -846,17 +847,16 @@ void analyzer::processFitData_BackGround(RooRealVar N, int ichannel, Double_t ch
     addTreeEntry(0,R1,dR1,0,ichannel,0, 1, chi2s, 0.0, 1.0);
 }
 /*----------------------------------------------------------------------------------------------------*/
-void analyzer::processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealVar sig, int ichannel, int ipeak, Double_t chi2ndfs, RooRealVar bg_f){
+void analyzer::processFitData(RooRealVar f, RooRealVar E, RooRealVar sig, int ichannel, int ipeak, Double_t chi2ndfs, RooRealVar bg_f){
     //
     // process the fit data in order to get the rate with errors etc into the ntuple
     //
     Double_t E1   = E.getValV();
-    Double_t Norm = N.getValV();
     Double_t frac = f.getValV();
 
     Double_t chi2s = chi2ndfs;
     //    Double_t R1   = Norm*frac/TIME_INTERVAL;
-    Double_t R1   = Norm*frac/delta_t;
+    Double_t R1   = frac/delta_t;
     //
     // Get covariance matrix elements. We calculate Rate = frac*Norm / delta_t, so
     //
@@ -889,9 +889,9 @@ void analyzer::processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealV
     // Calculate the error on the background rate
     if (FIT_BG_TEMPLATE){
         Double_t bg_frac = bg_f.getValV();
-        bg_R = Norm * bg_frac / delta_t ;
-        bg_dR = Norm * Norm * covariance(1, 1);
-        bg_dR += 2 * Norm * bg_frac * covariance(1, 0);
+        bg_R = bg_frac / delta_t ;
+        bg_dR = covariance(1, 1);
+        bg_dR += 2 * bg_frac * covariance(1, 0);
         bg_dR +=  bg_frac * bg_frac * covariance(0, 0);
         bg_dR = sqrt(bg_dR) / delta_t;
         // cout << "got here"<<bg_frac<<bg_R<<" +/- "<<bg_dR<<endl;
@@ -900,8 +900,8 @@ void analyzer::processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealV
     }
 
     //   cout <<" cov00 = "<<covariance(0,0)<<" cov01 = "<<covariance(idx,0)<<" cov11 = "<<covariance(idx,idx)<<endl;
-    Double_t dR1 = Norm*Norm*covariance(idx,idx);
-    dR1 += 2*Norm*frac*covariance(idx,0);
+    Double_t dR1 = covariance(idx,idx);
+    dR1 += 2*frac*covariance(idx,0);
     dR1 +=   frac*frac*covariance(0,0);
     dR1 = sqrt(dR1)/delta_t;
     //

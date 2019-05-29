@@ -125,7 +125,7 @@ class analyzer {
     void fit_spectrum(int ichannel, double *fit_range);
     void fit_spectrum_background(int ichannel, double *fit_range);
     void addTreeEntry(Double_t E, Double_t R, Double_t dR, Double_t res, Int_t ich, Int_t ipk, Double_t fractry, Double_t chindf, Double_t bg_rate, Double_t bg_drate);
-    void processFitData(RooRealVar N, RooRealVar f, RooRealVar E, RooRealVar sig, int ichannel, int ipeak, Double_t chi2, RooRealVar bg_f);
+    void processFitData(RooRealVar f, RooRealVar E, RooRealVar sig, int ichannel, int ipeak, Double_t chi2, RooRealVar bg_f);
     void processFitData_BackGround(RooRealVar N, int ichannel, Double_t chi2ndfs);
     void get_source_id();
 
